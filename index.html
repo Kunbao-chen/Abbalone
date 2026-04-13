@@ -117,13 +117,13 @@
                 ctx.lineWidth = isTail ? 4 : 1; ctx.stroke();
             }
 
-            // 3. [手術刀調換] 再繪製紅圈 (這樣紅圈就會浮在棋子之上，不會被蓋住)
+            // 3. [手術刀調換] 再繪製紅圈 (確保標籤疊加在棋子之上)
             if (legalTargets.some(t => t.q === q && t.r === r)) {
                 ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.5, 0, Math.PI*2);
                 ctx.strokeStyle = "#e74c3c"; ctx.lineWidth = 4; ctx.stroke();
             }
 
-            // 4. 最後繪製綠圈預覽 (最高層)
+            // 4. 最後繪製綠圈預覽
             if (previewTarget && previewTarget.q === q && previewTarget.r === r) {
                 ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.75, 0, Math.PI*2);
                 ctx.strokeStyle = "#2ecc71"; ctx.lineWidth = 5; ctx.stroke();
