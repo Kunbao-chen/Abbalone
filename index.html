@@ -2,50 +2,41 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>智推棋 Abalone - v1.4.0 推車與雙鍵版</title>
+    <title>智推棋 Abalone - v1.4.1 流程優化版</title>
     <style>
-        /* [需求三] 防反白功能：確保整體網頁與容器不可被選取 */
+        /* [需求一修正] 強化防反白 CSS */
+        * {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
         body {
             font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
             display: flex; flex-direction: column; align-items: center;
             background: #ececec; margin: 0; padding: 20px;
-            user-select: none; 
-            -webkit-user-select: none; 
-            -ms-user-select: none;
         }
         .info {
             background: white; padding: 15px 30px; border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; margin-bottom: 10px;
         }
-        .status { font-size: 1.5rem; font-weight: bold; color: #2c3e50; }
-        .score-board { font-size: 1.2rem; margin: 5px 0; color: #e74c3c; }
-        
-        /* 畫布容器 */
         .game-container { position: relative; display: flex; flex-direction: column; align-items: center; }
-
         canvas {
             background: #fff; border-radius: 50%;
             box-shadow: 0 10px 30px rgba(0,0,0,0.15); cursor: pointer;
-            touch-action: none; /* 防止移動端縮放干擾點擊 */
         }
-
-        /* [需求二] 雙側 OK 按鈕樣式 */
         .btn-zone { height: 60px; display: flex; align-items: center; justify-content: center; width: 100%; }
         .ok-btn {
             padding: 10px 40px; font-size: 1.1rem; cursor: pointer; border: none;
             border-radius: 8px; background: #2ecc71; color: white; font-weight: bold;
-            transition: all 0.3s; box-shadow: 0 4px 0 #27ae60;
+            box-shadow: 0 4px 0 #27ae60;
         }
-        .ok-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #27ae60; }
         .ok-btn:disabled { background: #bdc3c7; box-shadow: 0 4px 0 #95a5a6; cursor: not-allowed; opacity: 0.5; }
     </style>
 </head>
-<body>
-
-<div class="info">
-    <div id="status" class="status">黑棋回合</div>
-    <div id="score" class="score-board">黑 0 : 0 白</div>
-    <div style="font-size: 0.85rem; color: #7f8c8d;">點擊車尾，系統自動向前計算推動力。</div>
+<body oncontextmenu="return false;"> <div class="info">
+    <div id="status" class="status" style="font-size: 1.5rem; font-weight: bold;">黑棋回合</div>
+    <div id="score" style="font-size: 1.2rem; margin: 5px 0; color: #e74c3c;">黑 0 : 0 白</div>
 </div>
 
 <div class="game-container">
@@ -61,13 +52,6 @@
 </div>
 
 <script>
-    /**
-     * 智推棋 Abalone - v1.4.0
-     * [手術刀協議檢核點]
-     * 1. 座標系：保留 v1.3.0 Pointy-top 正位。
-     * 2. 邏輯：重寫為「向前看」的推車判定。
-     * 3. UI：雙 OK 鍵動態禁制。
-     */
     const canvas = document.getElementById('gameBoard');
     const ctx = canvas.getContext('2d');
     const HEX_SIZE = 32;
@@ -75,9 +59,10 @@
 
     let board = {}; 
     let tempBoard = null; 
-    let turn = 1; // 1: 黑, 2: 白
+    let turn = 1; 
     let selectedTail = null; 
     let legalTargets = [];   
+    let previewTarget = null; // [需求三] 用於標示綠圈的預選目標
     let score = { 1: 0, 2: 0 };
 
     const DIRS = [
@@ -101,9 +86,10 @@
     }
 
     function hexToPixel(q, r) {
-        let x = HEX_SIZE * Math.sqrt(3) * (q + r/2);
-        let y = HEX_SIZE * (3/2) * r;
-        return { x: x + OFFSET.x, y: y + OFFSET.y };
+        return { 
+            x: HEX_SIZE * Math.sqrt(3) * (q + r/2) + OFFSET.x, 
+            y: HEX_SIZE * (3/2) * r + OFFSET.y 
+        };
     }
 
     function pixelToHex(x, y) {
@@ -114,8 +100,7 @@
     }
 
     function hexRound(q, r) {
-        let s = -q-r;
-        let rq = Math.round(q); let rr = Math.round(r); let rs = Math.round(s);
+        let s = -q-r; let rq = Math.round(q); let rr = Math.round(r); let rs = Math.round(s);
         let dq = Math.abs(rq - q); let dr = Math.abs(rr - r); let ds = Math.abs(rs - s);
         if (dq > dr && dq > ds) rq = -rr-rs; else if (dr > ds) rr = -rq-rs;
         return {q: rq, r: rr};
@@ -123,30 +108,36 @@
 
     function draw() {
         ctx.clearRect(0, 0, 550, 550);
-        let activeBoard = tempBoard || board;
+        // [需求三修正] 繪圖始終使用原盤面，只有按下確定才切換
+        let activeBoard = board;
 
         for (let key in board) {
             let [q, r] = key.split(',').map(Number);
             let {x, y} = hexToPixel(q, r);
 
-            // 繪製棋盤槽
             ctx.beginPath();
             ctx.arc(x, y, HEX_SIZE * 0.85, 0, Math.PI*2);
             ctx.fillStyle = "#ddd";
             ctx.fill();
 
-            // [需求一] 目標點高亮 (紅色標記感)
+            // [需求二修正] 只要是合法方向，無論該格是否有敵棋，一律標示紅圈
             if (legalTargets.some(t => t.q === q && t.r === r)) {
                 ctx.beginPath();
-                ctx.arc(x, y, HEX_SIZE * 0.45, 0, Math.PI*2);
+                ctx.arc(x, y, HEX_SIZE * 0.5, 0, Math.PI*2);
                 ctx.strokeStyle = "#e74c3c";
                 ctx.lineWidth = 3;
                 ctx.stroke();
-                ctx.fillStyle = "rgba(231, 76, 60, 0.2)";
-                ctx.fill();
             }
 
-            // 繪製棋子
+            // [需求三修正] 選定預備位置後畫綠圈
+            if (previewTarget && previewTarget.q === q && previewTarget.r === r) {
+                ctx.beginPath();
+                ctx.arc(x, y, HEX_SIZE * 0.75, 0, Math.PI*2);
+                ctx.strokeStyle = "#2ecc71";
+                ctx.lineWidth = 5;
+                ctx.stroke();
+            }
+
             if (activeBoard[key] > 0) {
                 ctx.beginPath();
                 ctx.arc(x, y, HEX_SIZE * 0.7, 0, Math.PI*2);
@@ -160,7 +151,8 @@
         }
     }
 
-    // [需求三] 防止 Canvas 預設反白行為
+    // [需求一修正] 徹底阻斷反白
+    canvas.addEventListener('touchstart', (e) => e.preventDefault(), {passive: false});
     canvas.onmousedown = (e) => { e.preventDefault(); return false; };
 
     canvas.onclick = (e) => {
@@ -170,115 +162,77 @@
 
         if (board[key] === undefined) return;
 
-        // 如果點擊己方棋子，視為選取車尾 (不論目前是否在待定狀態，點擊己方就重選)
         if (board[key] === turn) {
-            tempBoard = null; // 重選時清除待定
+            tempBoard = null;
+            previewTarget = null;
             selectedTail = {q, r};
             calculateLegalMoves(q, r);
-            updateButtons();
         } 
-        // 如果點擊高亮的合法目標點
         else if (legalTargets.some(t => t.q === q && t.r === r)) {
-            previewMove(legalTargets.find(t => t.q === q && t.r === r));
-            updateButtons();
+            let moveInfo = legalTargets.find(t => t.q === q && t.r === r);
+            previewTarget = {q, r}; // 標記綠圈位置
+            prepareMove(moveInfo);   // 預算盤面但不更新 board
         }
+        updateButtons();
         draw();
     };
 
-    /**
-     * [需求一] 向前看方案 (Forward Scanning)
-     */
     function calculateLegalMoves(q, r) {
         legalTargets = [];
         DIRS.forEach(dir => {
             let allies = [{q, r}];
-            // 從點擊點(車尾) 往 dir 方向「向前」看
             for (let i = 1; i < 3; i++) {
-                let checkQ = q + dir.q * i;
-                let checkR = r + dir.r * i;
-                if (board[`${checkQ},${checkR}`] === turn) {
-                    allies.push({q: checkQ, r: checkR});
-                } else break;
+                let cQ = q + dir.q * i, cR = r + dir.r * i;
+                if (board[`${cQ},${cR}`] === turn) allies.push({q: cQ, r: cR}); else break;
             }
-
             let myPower = allies.length;
-            // 找到這串棋子的「車頭」位置
             let head = allies[allies.length - 1];
-            
-            let oppCount = 0;
-            let scanPos = { q: head.q + dir.q, r: head.r + dir.r }; // 車頭的前方第一格
-            let canMove = true;
-            let tempOpponents = [];
+            let oppCount = 0, canMove = true;
+            let scanPos = { q: head.q + dir.q, r: head.r + dir.r };
 
-            // 掃描前方敵軍
             while (board[`${scanPos.q},${scanPos.r}`] !== undefined && board[`${scanPos.q},${scanPos.r}`] !== 0) {
                 if (board[`${scanPos.q},${scanPos.r}`] === turn) { canMove = false; break; }
                 oppCount++;
-                tempOpponents.push({q: scanPos.q, r: scanPos.r});
                 scanPos.q += dir.q; scanPos.r += dir.r;
             }
-
-            // 多推少判定
+            // [需求二修正] 不檢查目的地是否為 0，只要 myPower > oppCount 且目的地在界內就合法
             if (canMove && myPower > oppCount) {
-                // 目標點定義：移動後「車頭」所在的新位置
-                legalTargets.push({ 
-                    q: head.q + dir.q, 
-                    r: head.r + dir.r, 
-                    dir, 
-                    allies, 
-                    oppCount,
-                    targetKey: `${head.q + dir.q},${head.r + dir.r}`
-                });
+                legalTargets.push({ q: head.q + dir.q, r: head.r + dir.r, dir, allies, oppCount });
             }
         });
     }
 
-    function previewMove(moveInfo) {
+    function prepareMove(moveInfo) {
         tempBoard = {...board};
-        // 連線隊友集體前移
         moveInfo.allies.forEach(s => tempBoard[`${s.q},${s.r}`] = 0);
-        moveInfo.allies.forEach(s => {
-            tempBoard[`${s.q + moveInfo.dir.q},${s.r + moveInfo.dir.r}`] = turn;
-        });
-        
-        // 對手位移
+        moveInfo.allies.forEach(s => tempBoard[`${s.q + moveInfo.dir.q},${s.r + moveInfo.dir.r}`] = turn);
         let oppColor = (turn === 1 ? 2 : 1);
         if (moveInfo.oppCount > 0) {
             for (let i = moveInfo.oppCount; i >= 1; i--) {
-                let oQ = moveInfo.q + moveInfo.dir.q * (i-1);
-                let oR = moveInfo.r + moveInfo.dir.r * (i-1);
-                let nextPos = { q: oQ + moveInfo.dir.q, r: oR + moveInfo.dir.r };
-                if (board[`${nextPos.q},${nextPos.r}`] !== undefined) {
-                    tempBoard[`${nextPos.q},${nextPos.r}`] = oppColor;
-                }
+                let oQ = moveInfo.q + moveInfo.dir.q * (i-1), oR = moveInfo.r + moveInfo.dir.r * (i-1);
+                let next = { q: oQ + moveInfo.dir.q, r: oR + moveInfo.dir.r };
+                if (board[`${next.q},${next.r}`] !== undefined) tempBoard[`${next.q},${next.r}`] = oppColor;
             }
         }
     }
 
     function executeMove() {
         let oppColor = (turn === 1 ? 2 : 1);
-        let beforeCount = Object.values(board).filter(v => v === oppColor).length;
-        let afterCount = Object.values(tempBoard).filter(v => v === oppColor).length;
-        score[turn] += (beforeCount - afterCount);
-
+        let bCount = Object.values(board).filter(v => v === oppColor).length;
+        let aCount = Object.values(tempBoard).filter(v => v === oppColor).length;
+        score[turn] += (bCount - aCount);
         board = tempBoard;
-        tempBoard = null; selectedTail = null; legalTargets = [];
+        tempBoard = null; selectedTail = null; legalTargets = []; previewTarget = null;
         turn = (turn === 1) ? 2 : 1;
         updateUI();
-        draw();
     }
 
-    // [需求二] 按鈕狀態更新：根據回合與是否有待定移動
     function updateButtons() {
         const topBtn = document.getElementById('okBtnTop');
         const bottomBtn = document.getElementById('okBtnBottom');
-        
-        topBtn.disabled = true;
-        bottomBtn.disabled = true;
-
+        topBtn.disabled = true; bottomBtn.disabled = true;
         if (tempBoard) {
-            if (turn === 1) bottomBtn.disabled = false; // 黑方回合亮下方
-            else topBtn.disabled = false;               // 白方回合亮上方
+            if (turn === 1) bottomBtn.disabled = false; else topBtn.disabled = false;
         }
     }
 
@@ -286,10 +240,7 @@
         document.getElementById('status').innerText = turn === 1 ? "黑棋回合" : "白棋回合";
         document.getElementById('score').innerText = `黑 ${score[1]} : ${score[2]} 白`;
         updateButtons();
-        if (score[1] >= 6 || score[2] >= 6) {
-            alert((score[1] >= 6 ? "黑棋" : "白棋") + "獲勝！");
-            location.reload();
-        }
+        draw();
     }
 
     init(); draw();
