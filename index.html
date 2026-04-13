@@ -2,14 +2,14 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>智推棋 Abalone - v1.4.1 流程優化版</title>
+    <title>智推棋 Abalone - v1.4.2 觸控解鎖版</title>
     <style>
-        /* [需求一修正] 強化防反白 CSS */
+        /* [核心修正] 復原成功的防反白方案：只針對選取而不鎖定行為 */
         * {
             -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
             user-select: none;
             -webkit-user-select: none;
+            -ms-user-select: none;
         }
         body {
             font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
@@ -24,6 +24,8 @@
         canvas {
             background: #fff; border-radius: 50%;
             box-shadow: 0 10px 30px rgba(0,0,0,0.15); cursor: pointer;
+            /* 確保觸控不會變成滾動或縮放 */
+            touch-action: manipulation; 
         }
         .btn-zone { height: 60px; display: flex; align-items: center; justify-content: center; width: 100%; }
         .ok-btn {
@@ -34,7 +36,7 @@
         .ok-btn:disabled { background: #bdc3c7; box-shadow: 0 4px 0 #95a5a6; cursor: not-allowed; opacity: 0.5; }
     </style>
 </head>
-<body oncontextmenu="return false;"> <div class="info">
+<body onselectstart="return false;"> <div class="info">
     <div id="status" class="status" style="font-size: 1.5rem; font-weight: bold;">黑棋回合</div>
     <div id="score" style="font-size: 1.2rem; margin: 5px 0; color: #e74c3c;">黑 0 : 0 白</div>
 </div>
@@ -62,7 +64,7 @@
     let turn = 1; 
     let selectedTail = null; 
     let legalTargets = [];   
-    let previewTarget = null; // [需求三] 用於標示綠圈的預選目標
+    let previewTarget = null; 
     let score = { 1: 0, 2: 0 };
 
     const DIRS = [
@@ -108,7 +110,6 @@
 
     function draw() {
         ctx.clearRect(0, 0, 550, 550);
-        // [需求三修正] 繪圖始終使用原盤面，只有按下確定才切換
         let activeBoard = board;
 
         for (let key in board) {
@@ -120,7 +121,7 @@
             ctx.fillStyle = "#ddd";
             ctx.fill();
 
-            // [需求二修正] 只要是合法方向，無論該格是否有敵棋，一律標示紅圈
+            // 繪製紅圈：不論該格是否有敵棋，只要是合法目標一律顯示
             if (legalTargets.some(t => t.q === q && t.r === r)) {
                 ctx.beginPath();
                 ctx.arc(x, y, HEX_SIZE * 0.5, 0, Math.PI*2);
@@ -129,7 +130,7 @@
                 ctx.stroke();
             }
 
-            // [需求三修正] 選定預備位置後畫綠圈
+            // 選定預備位置綠圈
             if (previewTarget && previewTarget.q === q && previewTarget.r === r) {
                 ctx.beginPath();
                 ctx.arc(x, y, HEX_SIZE * 0.75, 0, Math.PI*2);
@@ -151,10 +152,7 @@
         }
     }
 
-    // [需求一修正] 徹底阻斷反白
-    canvas.addEventListener('touchstart', (e) => e.preventDefault(), {passive: false});
-    canvas.onmousedown = (e) => { e.preventDefault(); return false; };
-
+    // [手術刀協議：回退改法] 移除 touchstart 的 preventDefault，改用 pointer 事件處理
     canvas.onclick = (e) => {
         let rect = canvas.getBoundingClientRect();
         let {q, r} = pixelToHex(e.clientX - rect.left, e.clientY - rect.top);
@@ -170,8 +168,8 @@
         } 
         else if (legalTargets.some(t => t.q === q && t.r === r)) {
             let moveInfo = legalTargets.find(t => t.q === q && t.r === r);
-            previewTarget = {q, r}; // 標記綠圈位置
-            prepareMove(moveInfo);   // 預算盤面但不更新 board
+            previewTarget = {q, r}; 
+            prepareMove(moveInfo);   
         }
         updateButtons();
         draw();
@@ -195,7 +193,6 @@
                 oppCount++;
                 scanPos.q += dir.q; scanPos.r += dir.r;
             }
-            // [需求二修正] 不檢查目的地是否為 0，只要 myPower > oppCount 且目的地在界內就合法
             if (canMove && myPower > oppCount) {
                 legalTargets.push({ q: head.q + dir.q, r: head.r + dir.r, dir, allies, oppCount });
             }
