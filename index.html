@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>智推棋 Abalone - v1.4.8</title>
+    <title>智推棋 Abalone - v1.4.9</title>
     <style>
         * {
             -webkit-tap-highlight-color: transparent;
@@ -35,7 +35,7 @@
 </head>
 <body onselectstart="return false;">
 
-<div class="version-tag">Version 1.4.8</div>
+<div class="version-tag">Version 1.4.9</div>
 
 <div class="info">
     <div id="status" class="status" style="font-size: 1.5rem; font-weight: bold;">黑棋回合</div>
@@ -55,6 +55,13 @@
 </div>
 
 <script>
+    // [手術刀追加] 防誤觸重整邏輯
+    window.addEventListener('beforeunload', function (e) {
+        // 標準瀏覽器做法：設置 returnValue 會觸發確認對話框
+        e.preventDefault();
+        e.returnValue = ''; 
+    });
+
     const canvas = document.getElementById('gameBoard');
     const ctx = canvas.getContext('2d');
     const HEX_SIZE = 32;
@@ -104,11 +111,9 @@
             let [q, r] = key.split(',').map(Number);
             let {x, y} = hexToPixel(q, r);
 
-            // 1. 繪製底座
             ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.85, 0, Math.PI*2);
             ctx.fillStyle = "#ddd"; ctx.fill();
 
-            // 2. [手術刀調換] 先繪製實心棋子
             if (board[key] > 0) {
                 ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.7, 0, Math.PI*2);
                 ctx.fillStyle = board[key] === 1 ? "#333" : "#fff"; ctx.fill();
@@ -117,13 +122,11 @@
                 ctx.lineWidth = isTail ? 4 : 1; ctx.stroke();
             }
 
-            // 3. [手術刀調換] 再繪製紅圈 (確保標籤疊加在棋子之上)
             if (legalTargets.some(t => t.q === q && t.r === r)) {
                 ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.5, 0, Math.PI*2);
                 ctx.strokeStyle = "#e74c3c"; ctx.lineWidth = 4; ctx.stroke();
             }
 
-            // 4. 最後繪製綠圈預覽
             if (previewTarget && previewTarget.q === q && previewTarget.r === r) {
                 ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.75, 0, Math.PI*2);
                 ctx.strokeStyle = "#2ecc71"; ctx.lineWidth = 5; ctx.stroke();
