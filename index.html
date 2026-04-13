@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>智推棋 Abalone - v1.4.4 路徑修正版</title>
+    <title>智推棋 Abalone - v1.4.6</title>
     <style>
         * {
             -webkit-tap-highlight-color: transparent;
@@ -11,8 +11,9 @@
         body {
             font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
             display: flex; flex-direction: column; align-items: center;
-            background: #ececec; margin: 0; padding: 20px;
+            background: #ececec; margin: 0; padding: 10px;
         }
+        .version-tag { font-size: 0.8rem; color: #95a5a6; margin-bottom: 5px; }
         .info {
             background: white; padding: 15px 30px; border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; margin-bottom: 10px;
@@ -33,6 +34,8 @@
     </style>
 </head>
 <body onselectstart="return false;">
+
+<div class="version-tag">Version 1.4.6</div>
 
 <div class="info">
     <div id="status" class="status" style="font-size: 1.5rem; font-weight: bold;">黑棋回合</div>
@@ -95,47 +98,26 @@
         return {q: rq, r: rr};
     }
 
-    /**
-     * [手術刀協議 - 精確修正]
-     * 修正紅圈顯示邏輯，確保「被推動的敵棋」格點也顯示紅圈。
-     */
     function draw() {
         ctx.clearRect(0, 0, 550, 550);
         for (let key in board) {
             let [q, r] = key.split(',').map(Number);
             let {x, y} = hexToPixel(q, r);
 
-            // 繪製背景槽
             ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.85, 0, Math.PI*2);
             ctx.fillStyle = "#ddd"; ctx.fill();
 
-            // [邏輯優化] 掃描是否在此格顯示紅圈
-            let shouldShowRedCircle = false;
-            legalTargets.forEach(t => {
-                // 1. 目的地 (車頭新位置) 一定有紅圈
-                if (q === t.q && r === t.r) shouldShowRedCircle = true;
-                
-                // 2. [關鍵] 檢查目的地與原車頭之間的所有敵棋格點
-                // 敵棋數量為 t.oppCount，它們都在目的地之後的路上
-                for (let i = 0; i < t.oppCount; i++) {
-                    let checkQ = t.q + t.dir.q * i;
-                    let checkR = t.r + t.dir.r * i;
-                    if (q === checkQ && r === checkR) shouldShowRedCircle = true;
-                }
-            });
-
-            if (shouldShowRedCircle) {
+            // [精簡修正] 只在合法目的地（車頭的前一格）標示紅圈
+            if (legalTargets.some(t => t.q === q && t.r === r)) {
                 ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.5, 0, Math.PI*2);
                 ctx.strokeStyle = "#e74c3c"; ctx.lineWidth = 3; ctx.stroke();
             }
 
-            // 綠圈預覽標記
             if (previewTarget && previewTarget.q === q && previewTarget.r === r) {
                 ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.75, 0, Math.PI*2);
                 ctx.strokeStyle = "#2ecc71"; ctx.lineWidth = 5; ctx.stroke();
             }
 
-            // 繪製棋子
             if (board[key] > 0) {
                 ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.7, 0, Math.PI*2);
                 ctx.fillStyle = board[key] === 1 ? "#333" : "#fff"; ctx.fill();
