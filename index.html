@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>智推棋 Abalone - v1.4.3 路徑強化版</title>
+    <title>智推棋 Abalone - v1.4.4 路徑修正版</title>
     <style>
         * {
             -webkit-tap-highlight-color: transparent;
@@ -57,18 +57,11 @@
     const HEX_SIZE = 32;
     const OFFSET = { x: 275, y: 275 };
 
-    let board = {}; 
-    let tempBoard = null; 
-    let turn = 1; 
-    let selectedTail = null; 
-    let legalTargets = [];   
-    let previewTarget = null; 
-    let score = { 1: 0, 2: 0 };
+    let board = {}; let tempBoard = null; let turn = 1; 
+    let selectedTail = null; let legalTargets = [];   
+    let previewTarget = null; let score = { 1: 0, 2: 0 };
 
-    const DIRS = [
-        {q: 1, r: -1}, {q: 1, r: 0}, {q: 0, r: 1},
-        {q: -1, r: 1}, {q: -1, r: 0}, {q: 0, r: -1}
-    ];
+    const DIRS = [{q:1,r:-1},{q:1,r:0},{q:0,r:1},{q:-1,r:1},{q:-1,r:0},{q:0,r:-1}];
 
     function init() {
         for (let q = -4; q <= 4; q++) {
@@ -86,86 +79,69 @@
     }
 
     function hexToPixel(q, r) {
-        return { 
-            x: HEX_SIZE * Math.sqrt(3) * (q + r/2) + OFFSET.x, 
-            y: HEX_SIZE * (3/2) * r + OFFSET.y 
-        };
+        return { x: HEX_SIZE * Math.sqrt(3) * (q + r/2) + OFFSET.x, y: HEX_SIZE * (3/2) * r + OFFSET.y };
     }
 
     function pixelToHex(x, y) {
         x -= OFFSET.x; y -= OFFSET.y;
-        let q = (Math.sqrt(3)/3 * x - 1/3 * y) / HEX_SIZE;
-        let r = (2/3 * y) / HEX_SIZE;
+        let q = (Math.sqrt(3)/3 * x - 1/3 * y) / HEX_SIZE, r = (2/3 * y) / HEX_SIZE;
         return hexRound(q, r);
     }
 
     function hexRound(q, r) {
-        let s = -q-r; let rq = Math.round(q); let rr = Math.round(r); let rs = Math.round(s);
-        let dq = Math.abs(rq - q); let dr = Math.abs(rr - r); let ds = Math.abs(rs - s);
+        let s = -q-r; let rq = Math.round(q), rr = Math.round(r), rs = Math.round(s);
+        let dq = Math.abs(rq - q), dr = Math.abs(rr - r), ds = Math.abs(rs - s);
         if (dq > dr && dq > ds) rq = -rr-rs; else if (dr > ds) rr = -rq-rs;
         return {q: rq, r: rr};
     }
 
     /**
-     * [手術刀優化] 強化紅圈標記
-     * 現在會掃描 legalTargets，如果當前格點在「推動路徑」上，也會顯示紅圈。
+     * [手術刀協議 - 精確修正]
+     * 修正紅圈顯示邏輯，確保「被推動的敵棋」格點也顯示紅圈。
      */
     function draw() {
         ctx.clearRect(0, 0, 550, 550);
-        let activeBoard = board;
-
         for (let key in board) {
             let [q, r] = key.split(',').map(Number);
             let {x, y} = hexToPixel(q, r);
 
-            ctx.beginPath();
-            ctx.arc(x, y, HEX_SIZE * 0.85, 0, Math.PI*2);
-            ctx.fillStyle = "#ddd";
-            ctx.fill();
+            // 繪製背景槽
+            ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.85, 0, Math.PI*2);
+            ctx.fillStyle = "#ddd"; ctx.fill();
 
-            // 檢查此格是否為合法路徑中的一部分 (包含目標落點與中間的敵棋格)
-            let isPath = legalTargets.some(t => {
-                // 檢查是否為終點或受影響的敵棋位置
-                for(let i=0; i <= t.oppCount; i++) {
-                    let pathQ = t.q + t.dir.q * i;
-                    let pathR = t.r + t.dir.r * i;
-                    // 這邊我們只標示從「推動點」開始的位置
-                    if(q === t.q && r === t.r) return true;
-                    // 優化：如果點擊後，原本敵棋所在的位置也會被推，也加上紅圈感
-                    for(let j=0; j < t.oppCount; j++) {
-                        let oppQ = t.q + t.dir.q * j;
-                        let oppR = t.r + t.dir.r * j;
-                        if(q === oppQ && r === oppR) return true;
-                    }
+            // [邏輯優化] 掃描是否在此格顯示紅圈
+            let shouldShowRedCircle = false;
+            legalTargets.forEach(t => {
+                // 1. 目的地 (車頭新位置) 一定有紅圈
+                if (q === t.q && r === t.r) shouldShowRedCircle = true;
+                
+                // 2. [關鍵] 檢查目的地與原車頭之間的所有敵棋格點
+                // 敵棋數量為 t.oppCount，它們都在目的地之後的路上
+                for (let i = 0; i < t.oppCount; i++) {
+                    let checkQ = t.q + t.dir.q * i;
+                    let checkR = t.r + t.dir.r * i;
+                    if (q === checkQ && r === checkR) shouldShowRedCircle = true;
                 }
-                return false;
             });
 
-            if (isPath) {
-                ctx.beginPath();
-                ctx.arc(x, y, HEX_SIZE * 0.5, 0, Math.PI*2);
-                ctx.strokeStyle = "#e74c3c";
-                ctx.lineWidth = 3;
-                ctx.stroke();
+            if (shouldShowRedCircle) {
+                ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.5, 0, Math.PI*2);
+                ctx.strokeStyle = "#e74c3c"; ctx.lineWidth = 3; ctx.stroke();
             }
 
+            // 綠圈預覽標記
             if (previewTarget && previewTarget.q === q && previewTarget.r === r) {
-                ctx.beginPath();
-                ctx.arc(x, y, HEX_SIZE * 0.75, 0, Math.PI*2);
-                ctx.strokeStyle = "#2ecc71";
-                ctx.lineWidth = 5;
-                ctx.stroke();
+                ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.75, 0, Math.PI*2);
+                ctx.strokeStyle = "#2ecc71"; ctx.lineWidth = 5; ctx.stroke();
             }
 
-            if (activeBoard[key] > 0) {
-                ctx.beginPath();
-                ctx.arc(x, y, HEX_SIZE * 0.7, 0, Math.PI*2);
-                ctx.fillStyle = activeBoard[key] === 1 ? "#333" : "#fff";
-                ctx.fill();
+            // 繪製棋子
+            if (board[key] > 0) {
+                ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.7, 0, Math.PI*2);
+                ctx.fillStyle = board[key] === 1 ? "#333" : "#fff"; ctx.fill();
                 let isTail = selectedTail && selectedTail.q === q && selectedTail.r === r;
                 ctx.strokeStyle = isTail ? "#f1c40f" : "#000";
-                ctx.lineWidth = isTail ? 4 : 1;
-                ctx.stroke();
+                ctx.lineWidth = isTail ? 4 : 1; ctx.stroke();
             }
         }
     }
@@ -174,7 +150,6 @@
         let rect = canvas.getBoundingClientRect();
         let {q, r} = pixelToHex(e.clientX - rect.left, e.clientY - rect.top);
         let key = `${q},${r}`;
-
         if (board[key] === undefined) return;
 
         if (board[key] === turn) {
@@ -187,8 +162,7 @@
             previewTarget = {q, r}; 
             prepareMove(moveInfo);   
         }
-        updateButtons();
-        draw();
+        updateButtons(); draw();
     };
 
     function calculateLegalMoves(q, r) {
@@ -199,12 +173,10 @@
                 let cQ = q + dir.q * i, cR = r + dir.r * i;
                 if (board[`${cQ},${cR}`] === turn) allies.push({q: cQ, r: cR}); else break;
             }
-            let myPower = allies.length;
-            let head = allies[allies.length - 1];
+            let myPower = allies.length, head = allies[allies.length - 1];
             let oppCount = 0, canMove = true;
             let scanPos = { q: head.q + dir.q, r: head.r + dir.r };
 
-            // 存儲即將被推動的敵棋路徑
             while (board[`${scanPos.q},${scanPos.r}`] !== undefined && board[`${scanPos.q},${scanPos.r}`] !== 0) {
                 if (board[`${scanPos.q},${scanPos.r}`] === turn) { canMove = false; break; }
                 oppCount++;
@@ -242,19 +214,15 @@
     }
 
     function updateButtons() {
-        const topBtn = document.getElementById('okBtnTop');
-        const bottomBtn = document.getElementById('okBtnBottom');
+        const topBtn = document.getElementById('okBtnTop'), bottomBtn = document.getElementById('okBtnBottom');
         topBtn.disabled = true; bottomBtn.disabled = true;
-        if (tempBoard) {
-            if (turn === 1) bottomBtn.disabled = false; else topBtn.disabled = false;
-        }
+        if (tempBoard) { if (turn === 1) bottomBtn.disabled = false; else topBtn.disabled = false; }
     }
 
     function updateUI() {
         document.getElementById('status').innerText = turn === 1 ? "黑棋回合" : "白棋回合";
         document.getElementById('score').innerText = `黑 ${score[1]} : ${score[2]} 白`;
-        updateButtons();
-        draw();
+        updateButtons(); draw();
     }
 
     init(); draw();
