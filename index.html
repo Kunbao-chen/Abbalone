@@ -2,54 +2,32 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>智推棋 Abalone - 視覺優化修正版</title>
+    <title>智推棋 Abalone - 架構師優化版</title>
     <style>
-        /* 手術刀協議：精確修正反白問題 */
         body {
             font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background: #ececec;
-            margin: 0;
-            padding: 20px;
-            /* 禁止整個頁面被意外選取 */
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
+            display: flex; flex-direction: column; align-items: center;
+            background: #ececec; margin: 0; padding: 20px;
+            user-select: none; -webkit-user-select: none;
         }
         .info {
-            background: white;
-            padding: 15px 30px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            text-align: center;
-            margin-bottom: 20px;
-            pointer-events: none; /* 防止點擊文字內容時觸發反白 */
+            background: white; padding: 15px 30px; border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; margin-bottom: 20px;
         }
+        .status { font-size: 1.5rem; font-weight: bold; color: #2c3e50; }
+        .score-board { font-size: 1.2rem; margin: 10px 0; color: #e74c3c; }
         canvas {
-            background: #fff;
-            border-radius: 50%;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-            cursor: pointer;
-            /* 針對 Canvas 強化禁止選取 */
-            -webkit-tap-highlight-color: transparent;
+            background: #fff; border-radius: 50%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15); cursor: pointer;
         }
-        .status {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #2c3e50;
+        .controls { margin-top: 20px; display: flex; gap: 10px; }
+        button {
+            padding: 10px 25px; font-size: 1rem; cursor: pointer; border: none;
+            border-radius: 5px; background: #3498db; color: white; font-weight: bold;
         }
-        .score-board {
-            font-size: 1.2rem;
-            margin: 10px 0;
-            color: #e74c3c;
-        }
-        .hint {
-            font-size: 0.85rem;
-            color: #7f8c8d;
-        }
+        button:disabled { background: #bdc3c7; cursor: not-allowed; }
+        button#confirmBtn { background: #2ecc71; }
+        button#cancelBtn { background: #e74c3c; }
     </style>
 </head>
 <body>
@@ -57,10 +35,15 @@
 <div class="info">
     <div id="status" class="status">黑棋回合</div>
     <div id="score" class="score-board">黑 0 : 0 白</div>
-    <div class="hint">選取 1-3 顆連線棋子，點擊鄰近空格或敵棋推動（限移一格）</div>
+    <div style="font-size: 0.9rem; color: #7f8c8d;">點擊己方棋子(車尾)，再點擊目標方向，最後按下確定。</div>
 </div>
 
 <canvas id="gameBoard" width="550" height="550"></canvas>
+
+<div class="controls">
+    <button id="confirmBtn" disabled onclick="executeMove()">確定行動</button>
+    <button id="cancelBtn" disabled onclick="cancelMove()">取消</button>
+</div>
 
 <script>
     const canvas = document.getElementById('gameBoard');
@@ -69,10 +52,14 @@
     const OFFSET = { x: 275, y: 275 };
 
     let board = {}; 
+    let tempBoard = null; // 用於存放「待定」的盤面
     let turn = 1; 
-    let selected = []; 
+    let selectedTail = null; // 選中的車尾
+    let targetMove = null;   // 選中的目標點
+    let legalTargets = [];   // 當前合法的目標預選點
     let score = { 1: 0, 2: 0 };
 
+    // 六角方向向量 (已考慮旋轉 60 度後的視覺邏輯)
     const DIRS = [
         {q: 1, r: 0}, {q: 1, r: -1}, {q: 0, r: -1},
         {q: -1, r: 0}, {q: -1, r: 1}, {q: 0, r: 1}
@@ -83,47 +70,62 @@
             for (let r = -4; r <= 4; r++) {
                 if (Math.abs(q + r) <= 4) {
                     let val = 0;
-                    if (r <= -3 || (r == -2 && q >= 0)) val = 2; 
-                    if (r >= 3 || (r == 2 && q <= 0)) val = 1;   
+                    // 旋轉 60 度後的擺放邏輯：黑白上下正對
+                    if (q <= -2 && q + r <= -1) val = 2; // 白棋在上
+                    if (q >= 2 && q + r >= 1) val = 1;   // 黑棋在下
                     board[`${q},${r}`] = val;
                 }
             }
         }
+        // 特殊初始位置微調，確保對稱
+        board["0,-4"] = 2; board["-1,-3"] = 2; board["1,-4"] = 2;
+        board["0,4"] = 1; board["1,3"] = 1; board["-1,4"] = 1;
     }
 
     function draw() {
         ctx.clearRect(0, 0, 550, 550);
+        let activeBoard = tempBoard || board;
+
         for (let key in board) {
             let [q, r] = key.split(',').map(Number);
+            // 繪圖座標轉換
             let x = HEX_SIZE * (1.5 * q) + OFFSET.x;
             let y = HEX_SIZE * (Math.sqrt(3)/2 * q + Math.sqrt(3) * r) + OFFSET.y;
 
+            // 1. 棋盤底色
             ctx.beginPath();
             ctx.arc(x, y, HEX_SIZE * 0.85, 0, Math.PI*2);
             ctx.fillStyle = "#ddd";
             ctx.fill();
 
-            if (board[key] > 0) {
+            // 2. 高亮合法目標點
+            if (legalTargets.some(t => t.q === q && t.r === r)) {
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = "rgba(46, 204, 113, 0.6)";
+                ctx.stroke();
+                ctx.fillStyle = "rgba(46, 204, 113, 0.2)";
+                ctx.fill();
+            }
+
+            // 3. 繪製棋子
+            if (activeBoard[key] > 0) {
                 ctx.beginPath();
                 ctx.arc(x, y, HEX_SIZE * 0.7, 0, Math.PI*2);
-                ctx.fillStyle = board[key] === 1 ? "#333" : "#fff";
+                ctx.fillStyle = activeBoard[key] === 1 ? "#333" : "#fff";
                 ctx.fill();
                 
-                let isSelected = selected.some(s => s.q == q && s.r == r);
-                ctx.strokeStyle = isSelected ? "#f1c40f" : "#000";
-                ctx.lineWidth = isSelected ? 4 : 1;
+                // 選取車尾特效
+                let isTail = selectedTail && selectedTail.q === q && selectedTail.r === r;
+                ctx.strokeStyle = isTail ? "#f1c40f" : "#000";
+                ctx.lineWidth = isTail ? 4 : 1;
                 ctx.stroke();
             }
         }
     }
 
-    // 修正：防止滑鼠雙擊導致選取反白
-    canvas.onmousedown = (e) => {
-        e.preventDefault(); 
-    };
+    canvas.onmousedown = (e) => e.preventDefault();
 
     canvas.onclick = (e) => {
-        e.preventDefault();
         let rect = canvas.getBoundingClientRect();
         let x = e.clientX - rect.left - OFFSET.x;
         let y = e.clientY - rect.top - OFFSET.y;
@@ -131,70 +133,108 @@
         let r = Math.round((-1/3 * x + Math.sqrt(3)/3 * y) / HEX_SIZE);
         let key = `${q},${r}`;
 
-        if (board[key] === undefined) return;
+        if (board[key] === undefined || tempBoard) return; // 待定狀態不可再選
 
         if (board[key] === turn) {
-            if (selected.some(s => s.q === q && s.r === r)) {
-                selected = [];
-            } else {
-                if (selected.length < 3) selected.push({q, r});
-                else selected = [{q, r}];
-            }
-        } else {
-            if (selected.length > 0) attemptMove({q, r});
+            // 選中車尾，掃描合法方向
+            selectedTail = {q, r};
+            calculateLegalMoves(q, r);
+        } else if (legalTargets.some(t => t.q === q && t.r === r)) {
+            // 選中合法目標點，進入「待定」狀態
+            previewMove({q, r});
         }
         draw();
     };
 
-    function attemptMove(target) {
-        let head = selected[selected.length - 1];
-        let dq = target.q - head.q;
-        let dr = target.r - head.r;
-        
-        if (!DIRS.some(d => d.q === dq && d.r === dr)) return;
-
-        let myCount = selected.length;
-        let opponentCount = 0;
-        
-        let curr = { q: target.q, r: target.r };
-        while (board[`${curr.q},${curr.r}`] !== undefined && board[`${curr.q},${curr.r}`] !== 0) {
-            if (board[`${curr.q},${curr.r}`] === turn) return; 
-            opponentCount++;
-            curr.q += dq;
-            curr.r += dr;
-        }
-
-        if (myCount > opponentCount) {
-            let tempBoard = {...board};
-            selected.forEach(s => tempBoard[`${s.q},${s.r}`] = 0);
-            selected.forEach(s => {
-                tempBoard[`${s.q + dq},${s.r + dr}`] = turn;
-            });
-            
-            let oppColor = (turn === 1 ? 2 : 1);
-            for (let i = 1; i <= opponentCount; i++) {
-                let nQ = target.q + (dq * i);
-                let nR = target.r + (dr * i);
-                let nKey = `${nQ},${nR}`;
-                
-                if (board[nKey] === undefined) {
-                    score[turn]++;
-                } else {
-                    tempBoard[nKey] = oppColor;
-                }
+    function calculateLegalMoves(q, r) {
+        legalTargets = [];
+        DIRS.forEach(dir => {
+            // 往反方向尋找隊友 (最多加自己共3顆)
+            let allies = [{q, r}];
+            for (let i = 1; i < 3; i++) {
+                let prev = { q: q - dir.q * i, r: r - dir.r * i };
+                if (board[`${prev.q},${prev.r}`] === turn) allies.push(prev);
+                else break;
             }
-            board = tempBoard;
-            nextTurn();
-        }
+
+            // 檢查前方推擠力
+            let myPower = allies.length;
+            let oppCount = 0;
+            let curr = { q: q + dir.q, r: r + dir.r };
+            let canMove = true;
+
+            while (board[`${curr.q},${curr.r}`] !== undefined && board[`${curr.q},${curr.r}`] !== 0) {
+                if (board[`${curr.q},${curr.r}`] === turn) { canMove = false; break; }
+                oppCount++;
+                curr.q += dir.q; curr.r += dir.r;
+            }
+
+            if (canMove && myPower > oppCount) {
+                legalTargets.push({ q: q + dir.q, r: r + dir.r, dir, allies });
+            }
+        });
     }
 
-    function nextTurn() {
+    function previewMove(target) {
+        let moveInfo = legalTargets.find(t => t.q === target.q && t.r === target.r);
+        targetMove = moveInfo;
+        tempBoard = {...board};
+
+        // 模擬位移邏輯
+        moveInfo.allies.forEach(s => tempBoard[`${s.q},${s.r}`] = 0);
+        moveInfo.allies.forEach(s => tempBoard[`${s.q + moveInfo.dir.q},${s.r + moveInfo.dir.r}`] = turn);
+        
+        let oppColor = (turn === 1 ? 2 : 1);
+        for (let i = 1; i <= 3; i++) {
+            let nQ = target.q + (moveInfo.dir.q * (i-1));
+            let nR = target.r + (moveInfo.dir.r * (i-1));
+            if (board[`${nQ},${nR}`] === oppColor) {
+                tempBoard[`${nQ},${nR}`] = 0;
+                let nextQ = nQ + moveInfo.dir.q;
+                let nextR = nR + moveInfo.dir.r;
+                if (board[`${nextQ},${nextR}`] !== undefined) {
+                    tempBoard[`${nextQ},${nextR}`] = oppColor;
+                }
+            }
+        }
+        
+        document.getElementById('confirmBtn').disabled = false;
+        document.getElementById('cancelBtn').disabled = false;
+    }
+
+    function executeMove() {
+        // 計算得分（檢查被推下去的棋子）
+        let oppColor = (turn === 1 ? 2 : 1);
+        // 此處簡化處理，實際透過比較前後盤面數量
+        let beforeCount = Object.values(board).filter(v => v === oppColor).length;
+        let afterCount = Object.values(tempBoard).filter(v => v === oppColor).length;
+        score[turn] += (beforeCount - afterCount);
+
+        board = tempBoard;
+        tempBoard = null;
+        selectedTail = null;
+        legalTargets = [];
         turn = turn === 1 ? 2 : 1;
-        selected = [];
+        
+        updateUI();
+        draw();
+    }
+
+    function cancelMove() {
+        tempBoard = null;
+        selectedTail = null;
+        legalTargets = [];
+        updateUI();
+        draw();
+    }
+
+    function updateUI() {
         document.getElementById('status').innerText = turn === 1 ? "黑棋回合" : "白棋回合";
         document.getElementById('score').innerText = `黑 ${score[1]} : ${score[2]} 白`;
+        document.getElementById('confirmBtn').disabled = true;
+        document.getElementById('cancelBtn').disabled = true;
         if (score[1] >= 6 || score[2] >= 6) {
-            alert("遊戲結束！" + (score[1] >= 6 ? "黑棋" : "白棋") + "獲勝！");
+            alert((score[1] >= 6 ? "黑棋" : "白棋") + "獲勝！");
             location.reload();
         }
     }
