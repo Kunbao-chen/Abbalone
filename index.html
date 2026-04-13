@@ -2,14 +2,11 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>智推棋 Abalone - v1.4.2 觸控解鎖版</title>
+    <title>智推棋 Abalone - v1.4.3 路徑強化版</title>
     <style>
-        /* [核心修正] 復原成功的防反白方案：只針對選取而不鎖定行為 */
         * {
             -webkit-tap-highlight-color: transparent;
-            user-select: none;
-            -webkit-user-select: none;
-            -ms-user-select: none;
+            user-select: none; -webkit-user-select: none; -ms-user-select: none;
         }
         body {
             font-family: "PingFang TC", "Microsoft JhengHei", sans-serif;
@@ -24,7 +21,6 @@
         canvas {
             background: #fff; border-radius: 50%;
             box-shadow: 0 10px 30px rgba(0,0,0,0.15); cursor: pointer;
-            /* 確保觸控不會變成滾動或縮放 */
             touch-action: manipulation; 
         }
         .btn-zone { height: 60px; display: flex; align-items: center; justify-content: center; width: 100%; }
@@ -36,7 +32,9 @@
         .ok-btn:disabled { background: #bdc3c7; box-shadow: 0 4px 0 #95a5a6; cursor: not-allowed; opacity: 0.5; }
     </style>
 </head>
-<body onselectstart="return false;"> <div class="info">
+<body onselectstart="return false;">
+
+<div class="info">
     <div id="status" class="status" style="font-size: 1.5rem; font-weight: bold;">黑棋回合</div>
     <div id="score" style="font-size: 1.2rem; margin: 5px 0; color: #e74c3c;">黑 0 : 0 白</div>
 </div>
@@ -108,6 +106,10 @@
         return {q: rq, r: rr};
     }
 
+    /**
+     * [手術刀優化] 強化紅圈標記
+     * 現在會掃描 legalTargets，如果當前格點在「推動路徑」上，也會顯示紅圈。
+     */
     function draw() {
         ctx.clearRect(0, 0, 550, 550);
         let activeBoard = board;
@@ -121,8 +123,25 @@
             ctx.fillStyle = "#ddd";
             ctx.fill();
 
-            // 繪製紅圈：不論該格是否有敵棋，只要是合法目標一律顯示
-            if (legalTargets.some(t => t.q === q && t.r === r)) {
+            // 檢查此格是否為合法路徑中的一部分 (包含目標落點與中間的敵棋格)
+            let isPath = legalTargets.some(t => {
+                // 檢查是否為終點或受影響的敵棋位置
+                for(let i=0; i <= t.oppCount; i++) {
+                    let pathQ = t.q + t.dir.q * i;
+                    let pathR = t.r + t.dir.r * i;
+                    // 這邊我們只標示從「推動點」開始的位置
+                    if(q === t.q && r === t.r) return true;
+                    // 優化：如果點擊後，原本敵棋所在的位置也會被推，也加上紅圈感
+                    for(let j=0; j < t.oppCount; j++) {
+                        let oppQ = t.q + t.dir.q * j;
+                        let oppR = t.r + t.dir.r * j;
+                        if(q === oppQ && r === oppR) return true;
+                    }
+                }
+                return false;
+            });
+
+            if (isPath) {
                 ctx.beginPath();
                 ctx.arc(x, y, HEX_SIZE * 0.5, 0, Math.PI*2);
                 ctx.strokeStyle = "#e74c3c";
@@ -130,7 +149,6 @@
                 ctx.stroke();
             }
 
-            // 選定預備位置綠圈
             if (previewTarget && previewTarget.q === q && previewTarget.r === r) {
                 ctx.beginPath();
                 ctx.arc(x, y, HEX_SIZE * 0.75, 0, Math.PI*2);
@@ -152,7 +170,6 @@
         }
     }
 
-    // [手術刀協議：回退改法] 移除 touchstart 的 preventDefault，改用 pointer 事件處理
     canvas.onclick = (e) => {
         let rect = canvas.getBoundingClientRect();
         let {q, r} = pixelToHex(e.clientX - rect.left, e.clientY - rect.top);
@@ -161,8 +178,7 @@
         if (board[key] === undefined) return;
 
         if (board[key] === turn) {
-            tempBoard = null;
-            previewTarget = null;
+            tempBoard = null; previewTarget = null;
             selectedTail = {q, r};
             calculateLegalMoves(q, r);
         } 
@@ -188,6 +204,7 @@
             let oppCount = 0, canMove = true;
             let scanPos = { q: head.q + dir.q, r: head.r + dir.r };
 
+            // 存儲即將被推動的敵棋路徑
             while (board[`${scanPos.q},${scanPos.r}`] !== undefined && board[`${scanPos.q},${scanPos.r}`] !== 0) {
                 if (board[`${scanPos.q},${scanPos.r}`] === turn) { canMove = false; break; }
                 oppCount++;
