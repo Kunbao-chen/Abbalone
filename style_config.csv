@@ -1,0 +1,39 @@
+﻿selector,property,value
+body,font-family,"""PingFang TC"", ""Microsoft JhengHei"", sans-serif"
+body,background,#2c3e50
+body,color,white
+body,margin,0
+body,display,flex
+body,flex-direction,column
+body,align-items,center
+body,min-height,100vh
+h1,margin-top,40px
+h1,letter-spacing,2px
+.lobby-container,display,grid
+.lobby-container,grid-template-columns,"repeat(auto-fit, minmax(280px, 1fr))"
+.lobby-container,gap,20px
+.lobby-container,width,90%
+.lobby-container,max-width,1000px
+.lobby-container,padding,20px
+.game-card,background,white
+.game-card,color,#333
+.game-card,border-radius,15px
+.game-card,padding,20px
+.game-card,cursor,pointer
+.game-card,transition,"transform 0.2s, box-shadow 0.2s"
+.game-card,text-decoration,none
+.game-card,display,flex
+.game-card,flex-direction,column
+.game-card,box-shadow,"0 4px 15px rgba(0,0,0,0.3)"
+.game-card:hover,transform,translateY(-5px)
+.game-card:hover,box-shadow,"0 8px 25px rgba(0,0,0,0.4)"
+.game-title,font-size,1.4rem
+.game-title,font-weight,bold
+.game-title,margin-bottom,5px
+.game-title,color,#2c3e50
+.game-version,font-size,0.75rem
+.game-version,color,#95a5a6
+.game-version,margin-bottom,10px
+.loading,margin-top,50px
+.loading,font-size,1.2rem
+.loading,opacity,0.7
