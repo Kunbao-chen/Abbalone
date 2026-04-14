@@ -1,39 +1,41 @@
-﻿selector,property,value
-body,font-family,"""PingFang TC"", ""Microsoft JhengHei"", sans-serif"
-body,background,#2c3e50
-body,color,white
-body,margin,0
-body,display,flex
-body,flex-direction,column
-body,align-items,center
-body,min-height,100vh
-h1,margin-top,40px
-h1,letter-spacing,2px
-.lobby-container,display,grid
-.lobby-container,grid-template-columns,"repeat(auto-fit, minmax(280px, 1fr))"
-.lobby-container,gap,20px
-.lobby-container,width,90%
-.lobby-container,max-width,1000px
-.lobby-container,padding,20px
-.game-card,background,white
-.game-card,color,#333
-.game-card,border-radius,15px
-.game-card,padding,20px
-.game-card,cursor,pointer
-.game-card,transition,"transform 0.2s, box-shadow 0.2s"
-.game-card,text-decoration,none
-.game-card,display,flex
-.game-card,flex-direction,column
-.game-card,box-shadow,"0 4px 15px rgba(0,0,0,0.3)"
-.game-card:hover,transform,translateY(-5px)
-.game-card:hover,box-shadow,"0 8px 25px rgba(0,0,0,0.4)"
-.game-title,font-size,1.4rem
-.game-title,font-weight,bold
-.game-title,margin-bottom,5px
-.game-title,color,#2c3e50
-.game-version,font-size,0.75rem
-.game-version,color,#95a5a6
-.game-version,margin-bottom,10px
-.loading,margin-top,50px
-.loading,font-size,1.2rem
-.loading,opacity,0.7
+selector,property,value
+body,"font-family","'PingFang TC', 'Microsoft JhengHei', sans-serif"
+body,"background","#f0f4f8"
+body,"margin","0"
+body,"display","flex"
+body,"flex-direction","column"
+body,"align-items","center"
+body,"min-height","100vh"
+h1,"margin-top","40px"
+h1,"color","#5d6d7e"
+h1,"letter-spacing","4px"
+h1,"text-shadow","2px 2px 0px #fff"
+.lobby-container,"display","grid"
+.lobby-container,"grid-template-columns","repeat(auto-fit, minmax(250px, 1fr))"
+.lobby-container,"gap","25px"
+.lobby-container,"width","90%"
+.lobby-container,"max-width","1000px"
+.lobby-container,"padding","30px"
+.game-card,"background","linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)"
+.game-card,"border-radius","30px"
+.game-card,"border","6px solid #ffffff"
+.game-card,"padding","25px"
+.game-card,"cursor","pointer"
+.game-card,"transition","all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)"
+.game-card,"display","flex"
+.game-card,"flex-direction","column"
+.game-card,"align-items","center"
+.game-card,"box-shadow","0 10px 20px rgba(0,0,0,0.08)"
+.game-card:hover,"transform","scale(1.08) rotate(1deg)"
+.game-card:hover,"box-shadow","0 15px 30px rgba(255, 154, 158, 0.4)"
+.game-card:active,"transform","scale(0.95)"
+.game-title,"font-size","1.6rem"
+.game-title,"font-weight","bold"
+.game-title,"color","#ffffff"
+.game-title,"text-shadow","2px 2px 4px rgba(0,0,0,0.1)"
+.game-title,"margin-bottom","8px"
+.game-version,"font-size","0.8rem"
+.game-version,"color","rgba(255,255,255,0.8)"
+.loading,"margin-top","50px"
+.loading,"font-size","1.2rem"
+.loading,"color","#95a5a6"
