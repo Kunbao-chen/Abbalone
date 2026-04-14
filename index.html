@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <link rel="manifest" href="manifest.json">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gamy Lobby - Cute Edition</title>
+    <title>Gamy Lobby</title>
+    <link rel="manifest" href="manifest.json">
 </head>
 <body>
 
@@ -16,9 +16,11 @@
     <script>
         async function initializeLobby() {
             try {
+                // 加入時間戳記避免瀏覽器讀取舊的快取檔案
+                const v = new Date().getTime();
                 const [cssRes, gameRes] = await Promise.all([
-                    fetch('style_config.csv'),
-                    fetch('folder.csv')
+                    fetch(`style_config.csv?v=${v}`),
+                    fetch(`folder.csv?v=${v}`)
                 ]);
 
                 if (!cssRes.ok || !gameRes.ok) throw new Error("檔案讀取失敗");
@@ -31,22 +33,22 @@
 
             } catch (error) {
                 console.error('Lobby Error:', error);
-                document.getElementById('lobby').innerHTML = '哎呀！設定檔離家出走了...';
+                document.getElementById('lobby').innerHTML = '配置讀取錯誤，請檢查檔案名稱。';
             }
         }
 
         function applyDynamicStyles(csv) {
-            const lines = csv.split('\n').filter(l => l.trim() !== '');
+            const lines = csv.split('\n').map(l => l.trim()).filter(l => l !== '');
             const styleRules = {};
 
             for (let i = 1; i < lines.length; i++) {
-                const parts = lines[i].split(',');
-                if (parts.length < 3) continue;
+                // 強大正則表達式：處理帶有引號和逗號的 CSV 欄位
+                const parts = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+                if (!parts || parts.length < 3) continue;
                 
-                // 處理包含逗號的數值（如 font-family 或 linear-gradient）
-                const selector = parts[0].trim();
-                const property = parts[1].trim();
-                const value = parts.slice(2).join(',').trim().replace(/^"|"$/g, '');
+                const selector = parts[0].replace(/"/g, '').trim();
+                const property = parts[1].replace(/"/g, '').trim();
+                const value = parts[2].replace(/"/g, '').trim();
                 
                 if (!styleRules[selector]) styleRules[selector] = "";
                 styleRules[selector] += `${property}: ${value}; `;
@@ -73,17 +75,12 @@
                 const game = {};
                 headers.forEach((h, idx) => game[h] = cols[idx]);
 
-                // 建立可愛的按鈕卡片
                 const card = document.createElement('div');
                 card.className = 'game-card';
-                
                 card.onclick = () => {
-                    // 嘗試請求全螢幕以隱藏網址列（部分瀏覽器支援）
                     if (document.documentElement.requestFullscreen) {
                         document.documentElement.requestFullscreen().catch(() => {});
                     }
-                    
-                    // 小延遲後跳轉，確保視覺反饋
                     setTimeout(() => {
                         window.location.href = `${game.folder_path}/${game.entry_file}`;
                     }, 150);
