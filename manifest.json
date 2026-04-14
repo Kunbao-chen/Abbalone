@@ -1,0 +1,15 @@
+{
+  "name": "Gamy 遊戲大廳",
+  "short_name": "Gamy",
+  "start_url": "Index.html",
+  "display": "standalone",
+  "background_color": "#f0f4f8",
+  "theme_color": "#ff9a9e",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/5260/5260498.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
