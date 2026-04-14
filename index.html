@@ -1,31 +1,102 @@
-<script>
-    // ... 之前的 applyDynamicStyles ...
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gamy Lobby - Cute Edition</title>
+</head>
+<body>
 
-    function renderGameList(csv) {
-        const rows = csv.split('\n').filter(row => row.trim() !== '');
-        const headers = rows[0].split(',').map(h => h.trim());
-        const container = document.getElementById('lobby');
-        container.innerHTML = ''; 
+    <h1>🎮 GAMY LOBBY</h1>
+    <div id="lobby" class="lobby-container">
+        <div class="loading">正在開啟遊戲大門...</div>
+    </div>
 
-        for (let i = 1; i < rows.length; i++) {
-            const cols = rows[i].split(',').map(c => c.trim());
-            const game = {};
-            headers.forEach((h, idx) => game[h] = cols[idx]);
+    <script>
+        async function initializeLobby() {
+            try {
+                const [cssRes, gameRes] = await Promise.all([
+                    fetch('style_config.csv'),
+                    fetch('folder.csv')
+                ]);
 
-            const card = document.createElement('div'); // 改用 div 封裝
-            card.className = 'game-card';
-            
-            // 點擊事件：處理轉跳與可能的偽裝全螢幕
-            card.onclick = () => {
-                // 這裡可以加入可愛的點擊音效或動畫
-                window.location.href = `${game.folder_path}/${game.entry_file}`;
-            };
+                if (!cssRes.ok || !gameRes.ok) throw new Error("檔案讀取失敗");
 
-            card.innerHTML = `
-                <div class="game-title">🎮 ${game.display_name}</div>
-                <div class="game-version">Version: ${game.entry_file.replace('.html', '')}</div>
-            `;
-            container.appendChild(card);
+                const cssText = await cssRes.text();
+                const gameText = await gameRes.text();
+
+                applyDynamicStyles(cssText);
+                renderGameList(gameText);
+
+            } catch (error) {
+                console.error('Lobby Error:', error);
+                document.getElementById('lobby').innerHTML = '哎呀！設定檔離家出走了...';
+            }
         }
-    }
-</script>
+
+        function applyDynamicStyles(csv) {
+            const lines = csv.split('\n').filter(l => l.trim() !== '');
+            const styleRules = {};
+
+            for (let i = 1; i < lines.length; i++) {
+                const parts = lines[i].split(',');
+                if (parts.length < 3) continue;
+                
+                // 處理包含逗號的數值（如 font-family 或 linear-gradient）
+                const selector = parts[0].trim();
+                const property = parts[1].trim();
+                const value = parts.slice(2).join(',').trim().replace(/^"|"$/g, '');
+                
+                if (!styleRules[selector]) styleRules[selector] = "";
+                styleRules[selector] += `${property}: ${value}; `;
+            }
+
+            let styleString = "";
+            for (const selector in styleRules) {
+                styleString += `${selector} { ${styleRules[selector]} }\n`;
+            }
+
+            const styleTag = document.createElement('style');
+            styleTag.textContent = styleString;
+            document.head.appendChild(styleTag);
+        }
+
+        function renderGameList(csv) {
+            const rows = csv.split('\n').filter(row => row.trim() !== '');
+            const headers = rows[0].split(',').map(h => h.trim());
+            const container = document.getElementById('lobby');
+            container.innerHTML = ''; 
+
+            for (let i = 1; i < rows.length; i++) {
+                const cols = rows[i].split(',').map(c => c.trim());
+                const game = {};
+                headers.forEach((h, idx) => game[h] = cols[idx]);
+
+                // 建立可愛的按鈕卡片
+                const card = document.createElement('div');
+                card.className = 'game-card';
+                
+                card.onclick = () => {
+                    // 嘗試請求全螢幕以隱藏網址列（部分瀏覽器支援）
+                    if (document.documentElement.requestFullscreen) {
+                        document.documentElement.requestFullscreen().catch(() => {});
+                    }
+                    
+                    // 小延遲後跳轉，確保視覺反饋
+                    setTimeout(() => {
+                        window.location.href = `${game.folder_path}/${game.entry_file}`;
+                    }, 150);
+                };
+
+                card.innerHTML = `
+                    <div class="game-title">${game.display_name}</div>
+                    <div class="game-version">V ${game.entry_file.split('.')[1] || '1.0'}</div>
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        window.onload = initializeLobby;
+    </script>
+</body>
+</html>
