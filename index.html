@@ -1,92 +1,31 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gamy Lobby - Dynamic v2</title>
-    </head>
-<body>
+<script>
+    // ... 之前的 applyDynamicStyles ...
 
-    <h1>GAMY LOBBY</h1>
-    <div id="lobby" class="lobby-container">
-        <div class="loading">正在初始化系統...</div>
-    </div>
+    function renderGameList(csv) {
+        const rows = csv.split('\n').filter(row => row.trim() !== '');
+        const headers = rows[0].split(',').map(h => h.trim());
+        const container = document.getElementById('lobby');
+        container.innerHTML = ''; 
 
-    <script>
-        // 核心載入器：確保樣式與清單都載入完成
-        async function initializeLobby() {
-            try {
-                // 平行執行：讀取樣式設定與遊戲清單
-                const [cssRes, gameRes] = await Promise.all([
-                    fetch('style_config.csv'),
-                    fetch('folder.csv')
-                ]);
+        for (let i = 1; i < rows.length; i++) {
+            const cols = rows[i].split(',').map(c => c.trim());
+            const game = {};
+            headers.forEach((h, idx) => game[h] = cols[idx]);
 
-                const cssText = await cssRes.text();
-                const gameText = await gameRes.text();
+            const card = document.createElement('div'); // 改用 div 封裝
+            card.className = 'game-card';
+            
+            // 點擊事件：處理轉跳與可能的偽裝全螢幕
+            card.onclick = () => {
+                // 這裡可以加入可愛的點擊音效或動畫
+                window.location.href = `${game.folder_path}/${game.entry_file}`;
+            };
 
-                // 1. 動態處理樣式
-                applyDynamicStyles(cssText);
-
-                // 2. 處理遊戲清單
-                renderGameList(gameText);
-
-            } catch (error) {
-                console.error('初始化失敗:', error);
-                document.getElementById('lobby').innerHTML = '配置讀取錯誤，請檢查 CSV 檔案。';
-            }
+            card.innerHTML = `
+                <div class="game-title">🎮 ${game.display_name}</div>
+                <div class="game-version">Version: ${game.entry_file.replace('.html', '')}</div>
+            `;
+            container.appendChild(card);
         }
-
-        // 解析 style_config.csv 並注入 <style> 標籤
-        function applyDynamicStyles(csv) {
-            const lines = csv.split('\n').filter(l => l.trim() !== '');
-            const headers = lines[0].split(',');
-            let styleString = "";
-            const styleRules = {};
-
-            // 將 CSV 轉換為 CSS 語法物件
-            for (let i = 1; i < lines.length; i++) {
-                const [selector, property, value] = lines[i].split(',').map(s => s.trim());
-                if (!styleRules[selector]) styleRules[selector] = "";
-                styleRules[selector] += `${property}: ${value}; `;
-            }
-
-            // 組合成標準 CSS 字串
-            for (const selector in styleRules) {
-                styleString += `${selector} { ${styleRules[selector]} }\n`;
-            }
-
-            const styleTag = document.createElement('style');
-            styleTag.textContent = styleString;
-            document.head.appendChild(styleTag);
-        }
-
-        // 解析 folder.csv 並繪製按鈕
-        function renderGameList(csv) {
-            const rows = csv.split('\n').filter(row => row.trim() !== '');
-            const headers = rows[0].split(',').map(h => h.trim());
-            const container = document.getElementById('lobby');
-            container.innerHTML = ''; 
-
-            for (let i = 1; i < rows.length; i++) {
-                const cols = rows[i].split(',').map(c => c.trim());
-                const game = {};
-                headers.forEach((h, idx) => game[h] = cols[idx]);
-
-                const card = document.createElement('a');
-                card.className = 'game-card';
-                // 保留 games/ 層級
-                card.href = `${game.folder_path}/${game.entry_file}`;
-
-                card.innerHTML = `
-                    <div class="game-title">${game.display_name}</div>
-                    <div class="game-version">${game.entry_file}</div>
-                `;
-                container.appendChild(card);
-            }
-        }
-
-        window.onload = initializeLobby;
-    </script>
-</body>
-</html>
+    }
+</script>
