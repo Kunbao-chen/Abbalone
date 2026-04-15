@@ -24,9 +24,9 @@
         .ok-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #27ae60; }
         .ok-btn:disabled { background: #bdc3c7; box-shadow: 0 4px 0 #95a5a6; opacity: 0.5; }
 
-        /* 手術位置 2：植入鐵灰色修行控制項 */
+        /* 手術位置：植入修行控制樣式 (鐵灰色) */
         #soul-controls { position: absolute; top: 75px; width: 90%; max-width: 450px; display: flex; justify-content: center; gap: 8px; z-index: 20; }
-        .soul-btn { background: rgba(85, 85, 85, 0.15); color: #555555; border: 1px solid #555555; padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; text-decoration: none; font-weight: bold; }
+        .soul-btn { background: rgba(85, 85, 85, 0.15); color: #555555; border: 1px solid #555555; padding: 4px 10px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: bold; }
         .soul-btn:hover { background: rgba(85, 85, 85, 0.6); color: white; }
         #version-tag { position: fixed; bottom: 8px; left: 8px; color: #555555; font-size: 10px; font-family: monospace; font-weight: bold; pointer-events: none; z-index: 999; }
         #thinking-overlay { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.6); color: #bdc3c7; padding: 20px 40px; border-radius: 10px; display: none; z-index: 1000; pointer-events: none; }
@@ -48,7 +48,6 @@
     </div>
 
     <div id="soul-controls">
-        <a href="robot_soul_seed.json" download class="soul-btn">取得初始手札</a>
         <button class="soul-btn" onclick="triggerImport()">傳承匯入 (增量融合)</button>
         <button class="soul-btn" onclick="exportSoul()">修行匯出</button>
     </div>
@@ -65,29 +64,34 @@
 <input type="file" id="soul-file-input" style="display:none;" onchange="handleFileImport(event)">
 
 <script>
-    // 手術位置 4：植入修行核心數據與融合算法 (高智商版)
+    // 手術位置：植入修行核心與「自動初始化種子」
     const SOUL_KEY = "Gamy_Abalone_Soul";
-    let aiSoul = JSON.parse(localStorage.getItem(SOUL_KEY)) || {
+    const DEFAULT_SOUL = {
         weights: { center: 0.5, attack: 0.5, defense: 0.5, grouping: 0.5 },
-        totalLearned: 0
+        totalLearned: 1 // 設定為 1 代表初始覺醒
     };
+
+    let aiSoul = JSON.parse(localStorage.getItem(SOUL_KEY)) || (function() {
+        localStorage.setItem(SOUL_KEY, JSON.stringify(DEFAULT_SOUL));
+        return DEFAULT_SOUL;
+    })();
 
     function updateSoulUI() {
         const tag = document.getElementById('version-tag');
         if(tag) tag.innerText = `Abalone v1.9.0 | 功力累計: ${aiSoul.totalLearned} 場`;
     }
 
+    // 高智商增量融合算法
     function smartMerge(importedSoul) {
         const currentTotal = aiSoul.totalLearned;
         const importedTotal = importedSoul.totalLearned;
         const delta = importedTotal - currentTotal;
 
         if (delta <= 0) {
-            alert("偵測到重複或較舊的手札，已取消融合以防止記憶偏差。");
+            alert("偵測到重複或較舊的手札，已取消融合。");
             return;
         }
 
-        // 高智商融合：僅針對差額(Delta)場數進行加權
         for (let key in aiSoul.weights) {
             aiSoul.weights[key] = (
                 (aiSoul.weights[key] * currentTotal) + 
@@ -98,7 +102,7 @@
         aiSoul.totalLearned = importedTotal;
         localStorage.setItem(SOUL_KEY, JSON.stringify(aiSoul));
         updateSoulUI();
-        alert(`融合成功！吸納了 ${delta} 場新功力，總修為：${importedTotal} 場。`);
+        alert(`融合成功！吸納了 ${delta} 場新功力。`);
     }
 
     function triggerImport() { document.getElementById('soul-file-input').click(); }
@@ -107,10 +111,8 @@
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (e) => {
-            try {
-                const imported = JSON.parse(e.target.result);
-                smartMerge(imported);
-            } catch(err) { alert("手札格式錯誤。"); }
+            try { smartMerge(JSON.parse(e.target.result)); } 
+            catch(err) { alert("手札格式錯誤。"); }
         };
         reader.readAsText(file);
     }
@@ -125,12 +127,11 @@
         downloadAnchorNode.remove();
     }
 
-    // 1.1秒思考感實現
+    // 1.1秒思考感模擬
     async function robotThinkDelay() {
         const overlay = document.getElementById('thinking-overlay');
         overlay.style.display = 'block';
         const start = Date.now();
-        // 此處模擬 Robot 邏輯計算...
         const elapsed = Date.now() - start;
         if (elapsed < 1100) await new Promise(r => setTimeout(r, 1100 - elapsed));
         overlay.style.display = 'none';
@@ -142,7 +143,7 @@
     const OFFSET = { x: 275, y: 275 };
     let board = {}; let turn = 1; 
     let selectedTail = null; let legalTargets = [];   
-    let previewTarget = null; let currentMoveInfo = null; // 存儲待執行的移動資訊
+    let previewTarget = null; let currentMoveInfo = null; 
     let score = { 1: 0, 2: 0 };
     const DIRS = [{q:1,r:-1},{q:1,r:0},{q:0,r:1},{q:-1,r:1},{q:-1,r:0},{q:0,r:-1}];
     let lastTurnTime = 0;
@@ -151,14 +152,7 @@
     function exitGame() { if(confirm("確定要離開遊戲？")) window.location.href = "../../index.html"; }
 
     function init() {
-        updateSoulUI(); // 手術位置：初始化 UI
-        // [Checksum 啟動]
-        if (aiSoul.totalLearned === 0) {
-            setTimeout(() => {
-                if(confirm("偵測到道場空無一人。您是否有之前的『徒弟手札』檔案可以匯入融合？")) triggerImport();
-            }, 800);
-        }
-
+        updateSoulUI(); // 初始化顯示功力
         for (let q = -4; q <= 4; q++) {
             for (let r = -4; r <= 4; r++) {
                 if (Math.abs(q + r) <= 4) {
@@ -198,7 +192,6 @@
         return {q: rq, r: rr};
     }
 
-    // [繪圖邏輯] 嚴格確保棋子留在原地，直到 OK
     function draw() {
         const now = Date.now();
         const elapsed = now - lastTurnTime;
@@ -207,10 +200,8 @@
         for (let key in board) {
             let [q, r] = key.split(',').map(Number);
             let {x, y} = hexToPixel(q, r);
-            
             ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.85, 0, Math.PI*2);
             ctx.fillStyle = "#ddd"; ctx.fill();
-            
             let val = board[key];
             if (val > 0) {
                 ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.7, 0, Math.PI*2);
@@ -220,14 +211,11 @@
                     grad.addColorStop(0, `hsla(${p * 360}, 80%, 60%, 1)`);
                     grad.addColorStop(1, val === 1 ? "#333" : "#fff");
                     ctx.fillStyle = grad;
-                } else {
-                    ctx.fillStyle = val === 1 ? "#333" : "#fff";
-                }
+                } else { ctx.fillStyle = val === 1 ? "#333" : "#fff"; }
                 ctx.fill();
                 let isTail = selectedTail && selectedTail.q === q && selectedTail.r === r;
                 ctx.strokeStyle = isTail ? "#f1c40f" : "#000"; ctx.lineWidth = isTail ? 4 : 1; ctx.stroke();
             }
-
             if (legalTargets.some(t => t.q === q && t.r === r)) {
                 ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.5, 0, Math.PI*2);
                 ctx.strokeStyle = "#e74c3c"; ctx.lineWidth = 4; ctx.stroke();
@@ -248,17 +236,12 @@
         let {q, r} = pixelToHex(x, y);
         let key = `${q},${r}`;
         if (board[key] === undefined) return;
-        
         if (board[key] === turn) {
-            previewTarget = null;
-            currentMoveInfo = null;
-            selectedTail = {q, r};
-            calculateLegalMoves(q, r);
-        } 
-        else if (legalTargets.some(t => t.q === q && t.r === r)) {
+            previewTarget = null; currentMoveInfo = null;
+            selectedTail = {q, r}; calculateLegalMoves(q, r);
+        } else if (legalTargets.some(t => t.q === q && t.r === r)) {
             currentMoveInfo = legalTargets.find(t => t.q === q && t.r === r);
             previewTarget = {q, r}; 
-            // 點擊紅圈僅顯示綠圈，不更新 board 也不預演
         }
         updateUI();
     }
@@ -283,32 +266,22 @@
 
     async function executeMove() {
         if (!currentMoveInfo) return;
-        
-        // 手術位置：若為 Robot 回合，觸發思考延遲
-        // 這裡預留給 Robot 模式，目前 PVP 僅執行
-        
         let nextBoard = {...board};
         const moveInfo = currentMoveInfo;
-        
-        // 1. 移除舊位
         moveInfo.allies.forEach(s => nextBoard[`${s.q},${s.r}`] = 0);
-        // 2. 放置新位
         moveInfo.allies.forEach(s => nextBoard[`${s.q + moveInfo.dir.q},${s.r + moveInfo.dir.r}`] = turn);
-        // 3. 推動
         let oppColor = (turn === 1 ? 2 : 1);
         if (moveInfo.oppCount > 0) {
             for (let i = moveInfo.oppCount; i >= 1; i--) {
                 let oQ = moveInfo.q + moveInfo.dir.q * (i-1), oR = moveInfo.r + moveInfo.dir.r * (i-1);
                 let next = { q: oQ + moveInfo.dir.q, r: oR + moveInfo.dir.r };
                 if (board[`${next.q},${next.r}`] !== undefined) nextBoard[`${next.q},${next.r}`] = oppColor;
-                else score[turn]++; // 推出場外
+                else score[turn]++;
             }
         }
-        
         board = nextBoard; 
         selectedTail = null; legalTargets = []; previewTarget = null; currentMoveInfo = null;
-        turn = (turn === 1) ? 2 : 1; 
-        lastTurnTime = Date.now();
+        turn = (turn === 1) ? 2 : 1; lastTurnTime = Date.now();
         updateUI();
     }
 
@@ -346,13 +319,10 @@
             wrapper.style.transform = `translate(0, 0) rotate(90deg)`;
             wrapper.style.width = `${h}px`; wrapper.style.height = `${w}px`;
             wrapper.style.left = `${(w - h) / 2}px`; wrapper.style.top = `${(h - w) / 2}px`;
-        } else {
-            wrapper.style.transform = `none`; wrapper.style.left = `0`; wrapper.style.top = `0`;
-        }
+        } else { wrapper.style.transform = `none`; wrapper.style.left = `0`; wrapper.style.top = `0`; }
     }
     window.addEventListener('resize', updateLayout);
     window.addEventListener('orientationchange', () => setTimeout(updateLayout, 100));
-    
     init(); updateLayout(); draw();
 </script>
 </body>
