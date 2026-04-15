@@ -6,7 +6,7 @@
     <title>Gamy Lobby v1.0.0</title>
     <link rel="manifest" href="manifest.json">
     <style>
-        /* 手術位置 2：玄關 UI 與版本標籤樣式（移除小字底色） */
+        /* 手術位置 2：玄關 UI 與版本標籤樣式 (優化小字顏色) */
         #mode-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.85); display: none;
@@ -26,8 +26,8 @@
         
         #version-tag {
             position: fixed; bottom: 8px; right: 8px; font-size: 11px; 
-            color: rgba(255, 255, 255, 0.4); pointer-events: none; z-index: 9999;
-            font-family: monospace;
+            color: rgba(241, 196, 15, 0.6); pointer-events: none; z-index: 9999;
+            font-family: monospace; font-weight: bold;
         }
     </style>
 </head>
@@ -88,6 +88,7 @@
             const styleRules = {};
 
             for (let i = 1; i < lines.length; i++) {
+                // 原稿邏輯：處理帶有引號和逗號的 CSV 欄位
                 const parts = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
                 if (!parts || parts.length < 3) continue;
                 
