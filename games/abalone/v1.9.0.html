@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Abalone v1.9.0 - Robot修行版</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        /* 手術位置 2：植入鐵灰色 UI 與修行相關樣式 */
+        #version-tag {
+            position: fixed; bottom: 8px; left: 8px;
+            color: #555555; font-size: 11px; font-family: monospace; font-weight: bold;
+            pointer-events: none; z-index: 9999;
+        }
+        #transfer-menu {
+            position: fixed; top: 10px; right: 10px;
+            display: flex; gap: 10px; z-index: 9999;
+        }
+        .transfer-btn {
+            background: rgba(85, 85, 85, 0.1); color: #555555;
+            border: 1px solid #555555; padding: 4px 8px; border-radius: 4px;
+            font-size: 11px; cursor: pointer; transition: 0.2s;
+        }
+        .transfer-btn:hover { background: rgba(85, 85, 85, 0.6); color: white; }
+        
+        #thinking-overlay {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.5); color: #bdc3c7; padding: 15px 30px;
+            border-radius: 8px; display: none; z-index: 10000; font-family: sans-serif;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="transfer-menu">
+        <button class="transfer-btn" onclick="triggerImport()">傳承匯入 (增量融合)</button>
+        <button class="transfer-btn" onclick="exportSoul()">修行匯出</button>
+    </div>
+    <div id="version-tag">Abalone v1.9.0 | 功力累計: 0 場</div>
+    <div id="thinking-overlay">徒弟思考中...</div>
+
+    <input type="file" id="soul-file-input" style="display:none;" onchange="handleFileImport(event)">
+
+    <div id="lobby" class="lobby-container">
+        <div class="loading">正在開啟遊戲大門...</div>
+    </div>
+
+    <script>
+        // 手術位置 4：高智商融合變數與核心邏輯
+        const SOUL_KEY = "Gamy_Abalone_Soul";
+        let aiSoul = JSON.parse(localStorage.getItem(SOUL_KEY)) || {
+            weights: { center: 0.5, attack: 0.5, defense: 0.5, grouping: 0.5 },
+            totalLearned: 0
+        };
+
+        async function initializeLobby() {
+            try {
+                const v = new Date().getTime();
+                const [cssRes, gameRes] = await Promise.all([
+                    fetch(`style_config.csv?v=${v}`),
+                    fetch(`folder.csv?v=${v}`)
+                ]);
+
+                if (!cssRes.ok || !gameRes.ok) throw new Error("檔案讀取失敗");
+
+                const cssText = await cssRes.text();
+                const gameText = await gameRes.text();
+
+                applyDynamicStyles(cssText);
+                renderGameList(gameText);
+                
+                // 手術位置 5：啟動檢查與 UI 更新
+                updateSoulUI();
+                if (aiSoul.totalLearned === 0) {
+                    setTimeout(() => {
+                        if(confirm("偵測到道場空無一人。您是否有之前的『徒弟手札』檔案可以匯入融合？")) {
+                            triggerImport();
+                        }
+                    }, 800);
+                }
+
+            } catch (error) {
+                console.error('Lobby Error:', error);
+                document.getElementById('lobby').innerHTML = '配置讀取錯誤，請檢查檔案名稱。';
+            }
+        }
+
+        // --- 核心手術：增量融合算法 (防止記憶偏重) ---
+        function smartMerge(importedSoul) {
+            const currentTotal = aiSoul.totalLearned;
+            const importedTotal = importedSoul.totalLearned;
+            
+            // 計算真正的增量 (Delta)
+            const delta = importedTotal - currentTotal;
+
+            if (delta <= 0) {
+                alert("偵測到重複或較舊的手札，已取消融合以防止記憶偏差。");
+                return;
+            }
+
+            // 僅對新增的功力進行加權融合
+            for (let key in aiSoul.weights) {
+                aiSoul.weights[key] = (
+                    (aiSoul.weights[key] * currentTotal) + 
+                    (importedSoul.weights[key] * delta)
+                ) / importedTotal;
+            }
+
+            aiSoul.totalLearned = importedTotal;
+            saveSoul();
+            alert(`融合成功！吸納了 ${delta} 場新功力，當前總修為：${importedTotal} 場。`);
+        }
+
+        // 手術位置 6：1.1秒思考感實現
+        async function robotThinkDelay() {
+            const overlay = document.getElementById('thinking-overlay');
+            overlay.style.display = 'block';
+            const start = Date.now();
+            
+            // 此處保留原稿邏輯計算空間...
+            
+            const elapsed = Date.now() - start;
+            if (elapsed < 1100) await new Promise(r => setTimeout(r, 1100 - elapsed));
+            overlay.style.display = 'none';
+        }
+
+        function saveSoul() {
+            localStorage.setItem(SOUL_KEY, JSON.stringify(aiSoul));
+            updateSoulUI();
+        }
+
+        function updateSoulUI() {
+            const tag = document.getElementById('version-tag');
+            if(tag) tag.innerText = `Abalone v1.9.0 | 功力累計: ${aiSoul.totalLearned} 場`;
+        }
+
+        function triggerImport() { document.getElementById('soul-file-input').click(); }
+
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    smartMerge(imported);
+                } catch(err) { alert("手札格式錯誤，無法讀取。"); }
+            };
+            reader.readAsText(file);
+        }
+
+        function exportSoul() {
+            const date = new Date().toISOString().slice(0,10).replace(/-/g,"");
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(aiSoul));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", `abalone_soul_${aiSoul.totalLearned}G_${date}.json`);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        /* --- 以下維持原稿 Checksum 比對區域 --- */
+
+        function applyDynamicStyles(csv) {
+            const lines = csv.split('\n').map(l => l.trim()).filter(l => l !== '');
+            const styleRules = {};
+
+            for (let i = 1; i < lines.length; i++) {
+                const parts = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+                if (!parts || parts.length < 3) continue;
+                
+                const selector = parts[0].replace(/"/g, '').trim();
+                const property = parts[1].replace(/"/g, '').trim();
+                const value = parts[2].replace(/"/g, '').trim();
+                
+                if (!styleRules[selector]) styleRules[selector] = "";
+                styleRules[selector] += `${property}: ${value}; `;
+            }
+
+            let styleString = "";
+            for (const selector in styleRules) {
+                styleString += `${selector} { ${styleRules[selector]} }\n`;
+            }
+
+            const styleTag = document.createElement('style');
+            styleTag.textContent = styleString;
+            document.head.appendChild(styleTag);
+        }
+
+        function renderGameList(csv) {
+            const rows = csv.split('\n').filter(row => row.trim() !== '');
+            const headers = rows[0].split(',').map(h => h.trim());
+            const container = document.getElementById('lobby');
+            container.innerHTML = ''; 
+
+            for (let i = 1; i < rows.length; i++) {
+                const cols = rows[i].split(',').map(c => c.trim());
+                const game = {};
+                headers.forEach((h, idx) => game[h] = cols[idx]);
+
+                const card = document.createElement('div');
+                card.className = 'game-card';
+                card.onclick = () => {
+                    if (document.documentElement.requestFullscreen) {
+                        document.documentElement.requestFullscreen().catch(() => {});
+                    }
+                    setTimeout(() => {
+                        window.location.href = `${game.folder_path}/${game.entry_file}`;
+                    }, 150);
+                };
+
+                card.innerHTML = `
+                    <div class="game-title">${game.display_name}</div>
+                    <div class="game-version">V ${game.entry_file.split('.')[1] || '1.0'}</div>
+                `;
+                container.appendChild(card);
+            }
+        }
+
+        window.onload = initializeLobby;
+    </script>
+</body>
+</html>
