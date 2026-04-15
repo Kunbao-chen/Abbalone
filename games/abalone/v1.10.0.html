@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>智推棋 Abalone - v1.10.0</title>
     <style>
-        /* [Checksum: v1.9.9 & v1.9.0 樣式全保留] */
+        /* [Checksum: v1.9.9 樣式保留] */
         * { -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; box-sizing: border-box; }
         html, body { overscroll-behavior: none; height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; background: #2c3e50; font-family: sans-serif; }
         #app-viewport { position: fixed; top: 0; left: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.3s ease; transform-origin: center center; overflow: hidden; }
@@ -31,16 +31,17 @@
         .explosion-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0; pointer-events: none; z-index: 1000; }
         @keyframes flash-white { 0% { opacity: 0; } 10% { opacity: 1; } 100% { opacity: 0; } }
 
-        /* 手術位置 1：新對局流 UI */
+        /* 手術位置：狀態機選單樣式 */
         #setup-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 500; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .setup-card { background: #34495e; padding: 25px; border-radius: 15px; border: 2px solid #7f8c8d; width: 85%; max-width: 320px; color: white; text-align: center; }
         .setup-title { font-size: 1.2rem; margin-bottom: 20px; color: #f1c40f; font-weight: bold; }
         .flow-btn { width: 100%; padding: 14px; margin: 8px 0; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .pvb-btn { background: #2980b9; color: white; }
-        .pvp-btn { background: #27ae60; color: white; }
-        .side-btn-black { background: #333; color: white; }
-        .side-btn-white { background: #fff; color: #333; }
-        .rps-btn { font-size: 2.2rem; background: rgba(255,255,255,0.1); border: 1px solid #7f8c8d; border-radius: 50%; width: 65px; height: 65px; cursor: pointer; transition: 0.2s; margin: 0 5px; }
+        .btn-pvp { background: #e67e22; }
+        .btn-pvb { background: #2980b9; }
+        .btn-room { background: #27ae60; }
+        .btn-back { background: #95a5a6; }
+        .rps-row { display: flex; justify-content: center; gap: 10px; margin: 15px 0; }
+        .rps-btn { font-size: 2rem; background: rgba(255,255,255,0.1); border: 1px solid #7f8c8d; border-radius: 50%; width: 60px; height: 60px; cursor: pointer; transition: 0.2s; }
         .rps-btn:active { background: #f1c40f; transform: scale(1.1); }
         #version-tag { position: fixed; bottom: 8px; left: 8px; color: #7f8c8d; font-size: 10px; font-family: monospace; font-weight: bold; pointer-events: none; z-index: 999; }
     </style>
@@ -51,30 +52,8 @@
     <div id="boom-layer" class="explosion-overlay"></div>
     
     <div id="setup-overlay">
-        <div class="setup-card" id="step-mode">
-            <div class="setup-title">智推棋 Abalone</div>
-            <button class="flow-btn pvb-btn" onclick="goToPVB()">P v Bot (人機對弈)</button>
-            <button class="flow-btn pvp-btn" onclick="goToRPS()">Play in Room (猜拳決定)</button>
-        </div>
-        <div class="setup-card" id="step-pvb-side" style="display:none;">
-            <div class="setup-title">您要執哪一色？</div>
-            <button class="flow-btn side-btn-black" onclick="startGame('PVB', 1, 'P', 'B')">我先行 (黑棋)</button>
-            <button class="flow-btn side-btn-white" onclick="startGame('PVB', 2, 'B', 'P')">我後行 (白棋)</button>
-        </div>
-        <div class="setup-card" id="step-rps" style="display:none;">
-            <div class="setup-title">猜拳決定先行權</div>
-            <div style="display:flex; justify-content:center;">
-                <button class="rps-btn" onclick="handleRPS('r')">✊</button>
-                <button class="rps-btn" onclick="handleRPS('p')">✋</button>
-                <button class="rps-btn" onclick="handleRPS('s')">✌️</button>
+        <div class="setup-card" id="overlay-content">
             </div>
-            <div id="rps-msg" style="margin-top:15px; font-weight:bold; color:#ecf0f1; min-height:1.2em;"></div>
-        </div>
-        <div class="setup-card" id="step-winner-choice" style="display:none;">
-            <div class="setup-title" id="winner-title">勝者決定參賽者</div>
-            <button class="flow-btn pvb-btn" onclick="finalPVPStart('P')">真人出賽 (Player)</button>
-            <button class="flow-btn pvp-btn" onclick="finalPVPStart('B')">代打出賽 (Robot)</button>
-        </div>
     </div>
 
     <div class="top-bar">
@@ -83,7 +62,7 @@
             <button id="resetBtn" class="reset-btn">RESET</button>
         </div>
         <div class="info">
-            <div id="status" style="font-weight: bold;">等待中</div>
+            <div id="status" style="font-weight: bold;">準備中</div>
             <div id="score" style="font-size: 0.8rem; color: #e74c3c;">黑 0 : 0 白</div>
         </div>
         <button class="exit-btn" onclick="exitGame()">EXIT</button>
@@ -102,7 +81,7 @@
     </div>
 </div>
 
-<div id="version-tag">Abalone v1.10.0 | 功力累計: 0 場</div>
+<div id="version-tag">Abalone v1.10.0</div>
 
 <script>
     // [靈魂 Checksum]
@@ -110,32 +89,71 @@
     const DEFAULT_SOUL = { weights: { center: 0.5, attack: 0.5, defense: 0.5, grouping: 0.5 }, totalLearned: 1 };
     let aiSoul = JSON.parse(localStorage.getItem(SOUL_KEY)) || DEFAULT_SOUL;
 
-    // 對局控制
-    let BLACK_TYPE = 'P'; // 'P'layer or 'B'ot
+    // 狀態機變量
+    let BLACK_TYPE = 'P'; 
     let WHITE_TYPE = 'P';
     let isBotThinking = false;
-    let rpsWinner = 1; // 1:Black, 2:White
+    let rpsWinnerSide = 1; 
 
-    // 手術位置 2：對局流導航
-    function goToPVB() { document.getElementById('step-mode').style.display='none'; document.getElementById('step-pvb-side').style.display='block'; }
-    function goToRPS() { document.getElementById('step-mode').style.display='none'; document.getElementById('step-rps').style.display='block'; }
-    
-    function handleRPS(user) {
-        const list = ['r','p','s'], bot = list[Math.floor(Math.random()*3)], msg = document.getElementById('rps-msg'), icon = {r:'✊',p:'✋',s:'✌️'};
-        if(user === bot) { msg.innerText = `平手 (${icon[bot]})，再來！`; return; }
-        const win = (user==='r'&&bot==='s')||(user==='p'&&bot==='r')||(user==='s'&&bot==='p');
-        msg.innerText = win ? `你贏了 (${icon[bot]})！` : `對方贏了 (${icon[bot]})！`;
-        rpsWinner = win ? 1 : 2;
-        setTimeout(() => {
-            document.getElementById('step-rps').style.display='none';
-            document.getElementById('winner-title').innerText = win ? "您贏了！請選擇您的出賽身分" : "對方贏了！請選擇對方的出賽身分";
-            document.getElementById('step-winner-choice').style.display='block';
-        }, 1000);
+    const contentBox = document.getElementById('overlay-content');
+
+    // 階段 1：模式選項
+    function showModeMenu() {
+        contentBox.innerHTML = `
+            <div class="setup-title">遊戲模式選項</div>
+            <button class="flow-btn btn-pvp" onclick="startGame('PVP', 1, 'P', 'P')">Player vs Player</button>
+            <button class="flow-btn btn-pvb" onclick="showPVBSideSelect()">Player vs Robot</button>
+            <button class="flow-btn btn-room" onclick="showRPSSelect()">Play in Room</button>
+            <button class="flow-btn btn-back" onclick="exitGame()">Back</button>
+        `;
     }
 
-    function finalPVPStart(type) {
-        if(rpsWinner === 1) startGame('PVP', 1, type, 'P');
-        else startGame('PVP', 1, 'P', type);
+    // 階段 2-b：PVB 選擇次序
+    function showPVBSideSelect() {
+        contentBox.innerHTML = `
+            <div class="setup-title">選擇您的順序</div>
+            <button class="flow-btn" style="background:#333; color:white;" onclick="startGame('PVB', 1, 'P', 'B')">玩家執黑先行</button>
+            <button class="flow-btn" style="background:#eee; color:#333;" onclick="startGame('PVB', 1, 'B', 'P')">玩家執白後行</button>
+            <button class="flow-btn btn-back" onclick="showModeMenu()">Back</button>
+        `;
+    }
+
+    // 階段 2-c：Room 猜拳畫面
+    function showRPSSelect() {
+        contentBox.innerHTML = `
+            <div class="setup-title">猜拳決定先行</div>
+            <div class="rps-row">
+                <button class="rps-btn" onclick="handleRPS('r')">✊</button>
+                <button class="rps-btn" onclick="handleRPS('p')">✋</button>
+                <button class="rps-btn" onclick="handleRPS('s')">✌️</button>
+            </div>
+            <div id="rps-msg" style="min-height:20px; margin-bottom:10px;"></div>
+            <button class="flow-btn btn-back" onclick="showModeMenu()">Back</button>
+        `;
+    }
+
+    function handleRPS(player) {
+        const list = ['r','p','s'], bot = list[Math.floor(Math.random()*3)], msg = document.getElementById('rps-msg'), icon = {r:'✊',p:'✋',s:'✌️'};
+        if(player === bot) { msg.innerText = `平手 (${icon[bot]})，再來！`; return; }
+        const win = (player==='r'&&bot==='s')||(player==='p'&&bot==='r')||(player==='s'&&bot==='p');
+        msg.innerText = win ? `您贏了 (${icon[bot]})！` : `對方贏了 (${icon[bot]})！`;
+        rpsWinnerSide = win ? 1 : 2; 
+        setTimeout(() => showIdentitySelect(win), 1000);
+    }
+
+    // 階段 3-c：選擇參賽者
+    function showIdentitySelect(isUserWinner) {
+        const title = isUserWinner ? "您贏了！請選擇您的身分" : "對方贏了！請選擇對方的身分";
+        contentBox.innerHTML = `
+            <div class="setup-title">${title}</div>
+            <button class="flow-btn btn-pvp" onclick="finalRoomStart('P')">Player go</button>
+            <button class="flow-btn btn-room" onclick="finalRoomStart('B')">Robot go</button>
+        `;
+    }
+
+    function finalRoomStart(type) {
+        if(rpsWinnerSide === 1) startGame('ROOM', 1, type, 'P');
+        else startGame('ROOM', 1, 'P', type);
     }
 
     function startGame(mode, side, bType, wType) {
@@ -154,7 +172,6 @@
     let board = {}; let turn = 1; let selectedTail = null; let legalTargets = []; let previewTarget = null; let currentMoveInfo = null; let score = { 1: 0, 2: 0 };
     const DIRS = [{q:1,r:-1},{q:1,r:0},{q:0,r:1},{q:-1,r:1},{q:-1,r:0},{q:0,r:-1}];
 
-    // 手術位置 3：機器人驅動
     function triggerBotMove() {
         if (isBotThinking) return; isBotThinking = true;
         setTimeout(() => {
@@ -196,13 +213,14 @@
         if (score[turn] >= 6) { alert(`${turn === 1 ? "黑棋" : "白棋"} 勝利！`); location.reload(); return; }
         turn = (turn === 1) ? 2 : 1;
         updateUI(); draw();
-        if (getCurrentType() === 'B') triggerBotMove();
+        if (getCurrentType() === 'B') triggerBotMove(); // 換手後若是 Robot 則啟動思考
     }
 
     function updateUI() {
-        document.getElementById('status').innerText = (turn === 1 ? "黑棋回合" : "白棋回合") + (getCurrentType()==='B' ? " (Bot)" : "");
+        const typeStr = getCurrentType() === 'B' ? " (Robot)" : " (Player)";
+        document.getElementById('status').innerText = (turn === 1 ? "黑棋回合" : "白棋回合") + typeStr;
         document.getElementById('score').innerText = `黑 ${score[1]} : ${score[2]} 白`;
-        document.getElementById('version-tag').innerText = `Abalone v1.10.0 | 功力累計: ${aiSoul.totalLearned} 場`;
+        document.getElementById('version-tag').innerText = `Abalone v1.10.0 | 功力: ${aiSoul.totalLearned}`;
         updateOKVisuals();
     }
 
@@ -299,9 +317,8 @@
         });
     }
 
-    // RESET Checksum
     const resetBtn = document.getElementById('resetBtn'); const progressCircle = document.getElementById('progressCircle');
-    let r_timer; let r_start; const r_dur = 2000;
+    let r_timer, r_start; const r_dur = 2000;
     function r_press(e) { e.preventDefault(); r_start = Date.now(); r_timer = requestAnimationFrame(r_upd); }
     function r_upd() {
         const p = Math.min((Date.now() - r_start) / r_dur, 1); progressCircle.style.strokeDashoffset = 126 * (1 - p);
@@ -319,7 +336,9 @@
     }
     function exitGame() { if(confirm("離開？")) window.location.href = "../../index.html"; }
     window.addEventListener('resize', updateLayout); canvas.addEventListener('mousedown', handleInput); canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInput(e); });
+    
     updateLayout();
+    showModeMenu(); // 啟動狀態機
 </script>
 </body>
 </html>
