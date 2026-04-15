@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>智推棋 Abalone - v1.10.3</title>
     <style>
-        /* [Checksum: v1.10.2 樣式對齊] */
         * { -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; box-sizing: border-box; }
         html, body { overscroll-behavior: none; height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; background: #2c3e50; font-family: sans-serif; }
         #app-viewport { position: fixed; top: 0; left: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.3s ease; transform-origin: center center; overflow: hidden; }
@@ -152,20 +151,14 @@
     let board = {}; let turn = 1; let selectedTail = null; let legalTargets = []; let previewTarget = null; let currentMoveInfo = null; let score = { 1: 0, 2: 0 };
     const DIRS = [{q:1,r:-1},{q:1,r:0},{q:0,r:1},{q:-1,r:1},{q:-1,r:0},{q:0,r:-1}];
 
-    // --- [核心進版手術：模擬人類操作流程] ---
     function triggerBotMove() {
         if (isBotThinking) return;
         isBotThinking = true;
-
-        // 重置所有 UI 狀態
         selectedTail = null; legalTargets = []; previewTarget = null; currentMoveInfo = null;
-
-        // 第一步：後台靜態運算 (毫秒級完成，不影響效率)
         let moves = [];
         for (let key in board) {
             if (board[key] === turn) {
                 let [q, r] = key.split(',').map(Number);
-                // 掃描所有可能的移動，存入臨時 arrayMoves
                 const c = board[`${q},${r}`];
                 DIRS.forEach(dir => {
                     let allies = [{q, r}]; 
@@ -182,10 +175,7 @@
                 });
             }
         }
-
         if (moves.length === 0) { isBotThinking = false; return; }
-
-        // 權重評分
         moves.forEach(m => {
             let s = Math.random();
             if (m.oppCount > 0) s += 100 * aiSoul.weights.attack;
@@ -195,25 +185,18 @@
         });
         moves.sort((a,b) => b.finalScore - a.finalScore);
         const best = moves[0];
-
-        // 第二步：視覺上演繹點擊序列
         setTimeout(() => {
-            // 模擬選取尾端 (產生黃圈與合規紅圈)
             selectedTail = {q: best.tailQ, r: best.tailR};
-            calculateLegalMoves(best.tailQ, best.tailR); // 呼叫全域函數填充紅圈
+            calculateLegalMoves(best.tailQ, best.tailR);
             draw(); updateOKVisuals();
-
             setTimeout(() => {
-                // 模擬選取目標 (產生綠圈)
                 previewTarget = {q: best.q, r: best.r};
                 currentMoveInfo = best;
                 draw(); updateOKVisuals();
-
                 setTimeout(() => {
-                    // 執行移動
                     executeMove();
                     isBotThinking = false;
-                }, 1000); 
+                }, 1000);
             }, 1000);
         }, 1000);
     }
@@ -328,4 +311,6 @@
     function calculateLegalMoves(q, r) {
         legalTargets = []; const c = board[`${q},${r}`];
         DIRS.forEach(dir => {
-            let allies = [{q, r}]; for (let i = 1; i < 3; i++) { if (board[`${q+dir.q*i},${r+dir.r*i}`] === c) allies.push({q: q+dir.q
+            let allies = [{q, r}]; for (let i = 1; i < 3; i++) { if (board[`${q+dir.q*i},${r+dir.r*i}`] === c) allies.push({q: q+dir.q*i, r: r+dir.r*i}); else break; }
+            let myP = allies.length, head = allies[allies.length - 1], oppC = 0, canM = true, sP = { q: head.q + dir.q, r: head.r + dir.r };
+            while (board[`${sP.q},${sP.r}`] !== undefined && board[`${sP.q},${sP.r}`] !== 0) { if (board[`${sP.q},${sP.r}`] === c) { canM = false; break; } op
