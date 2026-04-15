@@ -6,7 +6,7 @@
     <title>Gamy Lobby v1.0.0</title>
     <link rel="manifest" href="manifest.json">
     <style>
-        /* 手術位置 1: 新增玄關頁面專用樣式 */
+        /* 手術位置 1: 新增玄關頁面專用樣式與版本小字樣式 */
         #mode-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.85); display: none;
@@ -23,6 +23,12 @@
         .btn-main:active { background: #2c3e50; transform: scale(0.98); }
         .btn-cancel { background: transparent; color: #95a5a6; border: 1px solid #95a5a6; margin-top: 20px; }
         .btn-sub { background: #2980b9; color: white; }
+        
+        #version-tag {
+            position: fixed; bottom: 5px; right: 5px; font-size: 10px; 
+            color: rgba(255, 255, 255, 0.3); pointer-events: none; z-index: 9999;
+            font-family: monospace;
+        }
     </style>
 </head>
 <body>
@@ -31,6 +37,8 @@
     <div id="lobby" class="lobby-container">
         <div class="loading">正在開啟遊戲大門...</div>
     </div>
+
+    <div id="version-tag">Lobby v1.0.0</div>
 
     <div id="mode-overlay">
         <div class="mode-box" id="mode-selection-main">
@@ -103,25 +111,25 @@
                 const card = document.createElement('div');
                 card.className = 'game-card';
                 
-                // 手術位置 2: 修改點擊事件，改為開啟玄關選單
+                // 手術位置 4: 修改點擊事件，改為開啟玄關選單
                 card.onclick = () => {
                     openModeMenu(game.display_name, `${game.folder_path}/${game.entry_file}`);
                 };
 
                 card.innerHTML = `
-                    <div class="game-title">${game.display_name}</div>
-                    <div class="game-version">V ${game.entry_file.split('.')[1] || '1.0'}</div>
+                    <div class=\"game-title\">${game.display_name}</div>
+                    <div class=\"game-version\">V ${game.entry_file.split('.')[1] || '1.0'}</div>
                 `;
                 container.appendChild(card);
             }
         }
 
-        // 手術位置 4 & 5: 玄關控制邏輯
+        // 手術位置 5: 玄關控制邏輯
         function openModeMenu(name, path) {
             document.getElementById('display-game-name').innerText = name;
             selectedGamePath = path;
             document.getElementById('mode-overlay').style.display = 'flex';
-            backToMain(); // 確保每次打開都是主選單
+            backToMain(); 
         }
 
         function closeModeMenu() {
@@ -145,7 +153,6 @@
                 return;
             }
 
-            // 進入全螢幕
             if (document.documentElement.requestFullscreen) {
                 document.documentElement.requestFullscreen().catch(() => {});
             }
