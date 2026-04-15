@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gamy Lobby v1.0.0</title>
+    <title>Gamy Lobby</title>
     <link rel="manifest" href="manifest.json">
     <style>
         /* 手術位置 1: 新增玄關頁面專用樣式與版本小字樣式 */
@@ -23,7 +23,6 @@
         .btn-main:active { background: #2c3e50; transform: scale(0.98); }
         .btn-cancel { background: transparent; color: #95a5a6; border: 1px solid #95a5a6; margin-top: 20px; }
         .btn-sub { background: #2980b9; color: white; }
-        
         #version-tag {
             position: fixed; bottom: 5px; right: 5px; font-size: 10px; 
             color: rgba(255, 255, 255, 0.3); pointer-events: none; z-index: 9999;
@@ -33,7 +32,7 @@
 </head>
 <body>
 
-    <h1 id="lobby-title">🎮 GAMY LOBBY</h1>
+    <h1>🎮 GAMY LOBBY</h1>
     <div id="lobby" class="lobby-container">
         <div class="loading">正在開啟遊戲大門...</div>
     </div>
@@ -58,11 +57,12 @@
     </div>
 
     <script>
-        // 全域變數暫存當前選擇的遊戲路徑
+        // 手術位置 4: 新增全域變數
         let selectedGamePath = "";
 
         async function initializeLobby() {
             try {
+                // 加入時間戳記避免瀏覽器讀取舊的快取檔案
                 const v = new Date().getTime();
                 const [cssRes, gameRes] = await Promise.all([
                     fetch(`style_config.csv?v=${v}`),
@@ -84,14 +84,27 @@
         }
 
         function applyDynamicStyles(csv) {
-            const rows = csv.split('\n').filter(row => row.trim() !== '');
-            let styleString = "";
-            for (let i = 1; i < rows.length; i++) {
-                const [selector, property, value] = rows[i].split(',').map(item => item.trim());
-                if (selector && property && value) {
-                    styleString += `${selector} { ${property}: ${value}; }\n`;
-                }
+            const lines = csv.split('\n').map(l => l.trim()).filter(l => l !== '');
+            const styleRules = {};
+
+            for (let i = 1; i < lines.length; i++) {
+                // 強大正則表達式：處理帶有引號和逗號的 CSV 欄位
+                const parts = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+                if (!parts || parts.length < 3) continue;
+                
+                const selector = parts[0].replace(/"/g, '').trim();
+                const property = parts[1].replace(/"/g, '').trim();
+                const value = parts[2].replace(/"/g, '').trim();
+                
+                if (!styleRules[selector]) styleRules[selector] = "";
+                styleRules[selector] += `${property}: ${value}; `;
             }
+
+            let styleString = "";
+            for (const selector in styleRules) {
+                styleString += `${selector} { ${styleRules[selector]} }\n`;
+            }
+
             const styleTag = document.createElement('style');
             styleTag.textContent = styleString;
             document.head.appendChild(styleTag);
@@ -110,21 +123,20 @@
 
                 const card = document.createElement('div');
                 card.className = 'game-card';
-                
-                // 手術位置 4: 修改點擊事件，改為開啟玄關選單
+                // 手術位置 5: 修改點擊事件劫持邏輯
                 card.onclick = () => {
                     openModeMenu(game.display_name, `${game.folder_path}/${game.entry_file}`);
                 };
 
                 card.innerHTML = `
-                    <div class=\"game-title\">${game.display_name}</div>
-                    <div class=\"game-version\">V ${game.entry_file.split('.')[1] || '1.0'}</div>
+                    <div class="game-title">${game.display_name}</div>
+                    <div class="game-version">V ${game.entry_file.split('.')[1] || '1.0'}</div>
                 `;
                 container.appendChild(card);
             }
         }
 
-        // 手術位置 5: 玄關控制邏輯
+        // 手術位置 6: 植入玄關控制邏輯函數
         function openModeMenu(name, path) {
             document.getElementById('display-game-name').innerText = name;
             selectedGamePath = path;
@@ -147,16 +159,13 @@
         }
 
         function launchGame(mode, subtype = '') {
-            // 目前 PIR 模式跳出工事中提示
             if (mode === 'pir') {
                 alert("🚧 Play in Room 模式正在施工中，暫未開放雲端對戰。");
                 return;
             }
-
             if (document.documentElement.requestFullscreen) {
                 document.documentElement.requestFullscreen().catch(() => {});
             }
-
             setTimeout(() => {
                 const finalUrl = `${selectedGamePath}?mode=${mode}${subtype ? '&type=' + subtype : ''}`;
                 window.location.href = finalUrl;
