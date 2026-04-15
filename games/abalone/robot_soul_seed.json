@@ -1,0 +1,12 @@
+{
+  "version": "1.9.0",
+  "name": "師門初祖",
+  "totalLearned": 0,
+  "weights": {
+    "center": 0.5,
+    "attack": 0.5,
+    "defense": 0.5,
+    "grouping": 0.5
+  },
+  "historyLog": []
+}
