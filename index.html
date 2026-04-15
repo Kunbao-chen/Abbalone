@@ -6,26 +6,27 @@
     <title>Gamy Lobby</title>
     <link rel="manifest" href="manifest.json">
     <style>
-        /* 手術位置 1: 新增玄關頁面專用樣式與版本小字樣式 */
+        /* 手術位置 1：玄關 UI 與版本標籤樣式 */
         #mode-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.85); display: none;
             flex-direction: column; justify-content: center; align-items: center; z-index: 1000;
             color: white; font-family: sans-serif;
         }
-        .mode-box { width: 80%; max-width: 350px; text-align: center; }
-        .mode-box h2 { color: #3498db; margin-bottom: 20px; font-size: 1.4rem; }
+        .mode-box { width: 85%; max-width: 350px; text-align: center; }
+        .mode-box h2 { color: #3498db; margin-bottom: 25px; font-size: 1.4rem; }
         .menu-btn {
             width: 100%; padding: 15px; margin: 10px 0; border: none; border-radius: 8px;
             font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s;
         }
         .btn-main { background: #34495e; color: white; border: 1px solid #5d6d7e; }
         .btn-main:active { background: #2c3e50; transform: scale(0.98); }
-        .btn-cancel { background: transparent; color: #95a5a6; border: 1px solid #95a5a6; margin-top: 20px; }
         .btn-sub { background: #2980b9; color: white; }
+        .btn-cancel { background: transparent; color: #95a5a6; border: 1px solid #95a5a6; margin-top: 25px; }
+        
         #version-tag {
-            position: fixed; bottom: 5px; right: 5px; font-size: 10px; 
-            color: rgba(255, 255, 255, 0.3); pointer-events: none; z-index: 9999;
+            position: fixed; bottom: 8px; right: 8px; font-size: 11px; 
+            color: rgba(255, 255, 255, 0.25); pointer-events: none; z-index: 9999;
             font-family: monospace;
         }
     </style>
@@ -42,8 +43,8 @@
     <div id="mode-overlay">
         <div class="mode-box" id="mode-selection-main">
             <h2 id="display-game-name">遊戲名稱</h2>
-            <button class="menu-btn btn-main" onclick="launchGame('pvp')">Player versus Player</button>
-            <button class="menu-btn btn-main" onclick="launchGame('pvr')">Player versus Robot</button>
+            <button class="menu-btn btn-main" onclick="launchGame('pvp')">Player VS Player</button>
+            <button class="menu-btn btn-main" onclick="launchGame('pvr')">Player VS Robot</button>
             <button class="menu-btn btn-main" onclick="showPIRSubMenu()">Play in Room</button>
             <button class="menu-btn btn-cancel" onclick="closeModeMenu()">取消退出</button>
         </div>
@@ -57,7 +58,7 @@
     </div>
 
     <script>
-        // 手術位置 4: 新增全域變數
+        // 手術位置 4：新增全域狀態變數
         let selectedGamePath = "";
 
         async function initializeLobby() {
@@ -123,7 +124,8 @@
 
                 const card = document.createElement('div');
                 card.className = 'game-card';
-                // 手術位置 5: 修改點擊事件劫持邏輯
+                
+                // 手術位置 5：劫持點擊事件，改為開啟模式選單
                 card.onclick = () => {
                     openModeMenu(game.display_name, `${game.folder_path}/${game.entry_file}`);
                 };
@@ -136,12 +138,12 @@
             }
         }
 
-        // 手術位置 6: 植入玄關控制邏輯函數
+        // 手術位置 6：玄關控制邏輯函數群
         function openModeMenu(name, path) {
             document.getElementById('display-game-name').innerText = name;
             selectedGamePath = path;
             document.getElementById('mode-overlay').style.display = 'flex';
-            backToMain(); 
+            backToMain();
         }
 
         function closeModeMenu() {
