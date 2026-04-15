@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>智推棋 Abalone - v1.10.1</title>
+    <title>智推棋 Abalone - v1.10.3</title>
     <style>
-        /* [Checksum: v1.9.9 樣式保留] */
+        /* [Checksum: v1.10.2 樣式對齊] */
         * { -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; box-sizing: border-box; }
         html, body { overscroll-behavior: none; height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; background: #2c3e50; font-family: sans-serif; }
         #app-viewport { position: fixed; top: 0; left: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.3s ease; transform-origin: center center; overflow: hidden; }
@@ -31,16 +31,13 @@
         .explosion-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0; pointer-events: none; z-index: 1000; }
         @keyframes flash-white { 0% { opacity: 0; } 10% { opacity: 1; } 100% { opacity: 0; } }
 
-        /* 手術位置：對齊大廳按鈕的樣式 */
         #setup-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 500; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .setup-card { width: 85%; max-width: 320px; color: white; text-align: center; display: flex; flex-direction: column; align-items: center; }
-        .setup-title { font-size: 1.2rem; margin-bottom: 25px; color: #f1c40f; font-weight: bold; letter-spacing: 1px; }
-        .flow-btn { width: 100%; padding: 15px; margin: 8px 0; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; background: #34495e; color: white; border: 1px solid #7f8c8d; box-shadow: 0 4px 0 #2c3e50; transition: transform 0.1s; }
-        .flow-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #2c3e50; }
-        .btn-back { background: #95a5a6 !important; box-shadow: 0 4px 0 #7f8c8d !important; margin-top: 15px; }
-        .rps-row { display: flex; justify-content: center; gap: 15px; margin: 15px 0; width: 100%; }
-        .rps-btn { font-size: 2rem; background: #34495e; border: 1px solid #7f8c8d; border-radius: 50%; width: 70px; height: 70px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 0 #2c3e50; }
-        .rps-btn:active { background: #f1c40f; transform: scale(1.1); }
+        .setup-card { width: 80%; max-width: 280px; display: flex; flex-direction: column; align-items: center; }
+        .setup-title { font-size: 1.25rem; margin-bottom: 30px; color: #fff; font-weight: 800; text-align: center; width: 100%; }
+        .flow-btn { width: 100%; padding: 18px; margin: 10px 0; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; cursor: pointer; background: #34495e; color: white; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 0 #1a252f; transition: all 0.1s; text-align: center; }
+        .btn-back { background: #7f8c8d !important; box-shadow: 0 4px 0 #616a6b !important; margin-top: 20px; }
+        .rps-row { display: flex; justify-content: space-between; gap: 10px; margin: 10px 0; width: 100%; }
+        .rps-btn { font-size: 1.8rem; background: #34495e; border: 1px solid rgba(255,255,255,0.2); border-radius: 12px; flex: 1; height: 75px; cursor: pointer; box-shadow: 0 4px 0 #1a252f; }
         #version-tag { position: fixed; bottom: 8px; left: 8px; color: #7f8c8d; font-size: 10px; font-family: monospace; font-weight: bold; pointer-events: none; z-index: 999; }
     </style>
 </head>
@@ -48,11 +45,7 @@
 
 <div id="app-viewport">
     <div id="boom-layer" class="explosion-overlay"></div>
-    
-    <div id="setup-overlay">
-        <div class="setup-card" id="overlay-content">
-            </div>
-    </div>
+    <div id="setup-overlay"><div class="setup-card" id="overlay-content"></div></div>
 
     <div class="top-bar">
         <div class="reset-wrapper">
@@ -79,39 +72,26 @@
     </div>
 </div>
 
-<div id="version-tag">Abalone v1.10.1</div>
+<div id="version-tag">Abalone v1.10.3</div>
 
 <script>
-    // [靈魂 Checksum]
     const SOUL_KEY = "Gamy_Abalone_Soul";
     const DEFAULT_SOUL = { weights: { center: 0.5, attack: 0.5, defense: 0.5, grouping: 0.5 }, totalLearned: 1 };
     let aiSoul = JSON.parse(localStorage.getItem(SOUL_KEY)) || DEFAULT_SOUL;
 
-    let BLACK_TYPE = 'P'; 
-    let WHITE_TYPE = 'P';
-    let isBotThinking = false;
-    let rpsWinnerSide = 1; 
-
+    let BLACK_TYPE = 'P'; let WHITE_TYPE = 'P';
+    let isBotThinking = false; 
     const contentBox = document.getElementById('overlay-content');
 
-    // 核心初始化：偵測大廳傳來的參數
     function autoRoute() {
         const urlParams = new URLSearchParams(window.location.search);
         const mode = urlParams.get('mode');
-
-        if (mode === 'pvp') {
-            startGame('PVP', 1, 'P', 'P');
-        } else if (mode === 'pvr') {
-            showPVBSideSelect();
-        } else if (mode === 'pvr_room') {
-            showRPSSelect();
-        } else {
-            // 若無參數，預設回退到 PvP (或報錯)
-            startGame('PVP', 1, 'P', 'P');
-        }
+        if (mode === 'pvp') startGame('PVP', 1, 'P', 'P');
+        else if (mode === 'pvr') showPVBSideSelect();
+        else if (mode === 'pvr_room') showRPSSelect();
+        else startGame('PVP', 1, 'P', 'P');
     }
 
-    // [路徑 2-b] PVB 選擇次序 (垂直對齊)
     function showPVBSideSelect() {
         contentBox.innerHTML = `
             <div class="setup-title">選擇您的順序</div>
@@ -121,7 +101,6 @@
         `;
     }
 
-    // [路徑 2-c] Room 猜拳畫面 (垂直對齊)
     function showRPSSelect() {
         contentBox.innerHTML = `
             <div class="setup-title">猜拳決定先行</div>
@@ -130,23 +109,21 @@
                 <button class="rps-btn" onclick="handleRPS('p')">✋</button>
                 <button class="rps-btn" onclick="handleRPS('s')">✌️</button>
             </div>
-            <div id="rps-msg" style="min-height:25px; margin-bottom:15px; font-weight:bold; color:#f1c40f;"></div>
+            <div id="rps-msg" style="height:30px; margin:10px 0; font-weight:bold; color:#f1c40f; text-align:center;"></div>
             <button class="flow-btn btn-back" onclick="exitGame()">Back</button>
         `;
     }
 
     function handleRPS(player) {
-        const list = ['r','p','s'], bot = list[Math.floor(Math.random()*3)], msg = document.getElementById('rps-msg'), icon = {r:'✊',p:'✋',s:'✌️'};
-        if(player === bot) { msg.innerText = `平手 (${icon[bot]})，再來！`; return; }
-        const win = (player==='r'&&bot==='s')||(player==='p'&&bot==='r')||(player==='s'&&bot==='p');
-        msg.innerText = win ? `您贏了 (${icon[bot]})！` : `對方贏了 (${icon[bot]})！`;
-        rpsWinnerSide = win ? 1 : 2; 
-        setTimeout(() => showIdentitySelect(win), 1000);
+        const list=['r','p','s'], bot=list[Math.floor(Math.random()*3)], msg=document.getElementById('rps-msg'), icon={r:'✊',p:'✋',s:'✌️'};
+        if(player===bot){ msg.innerText=`平手 (${icon[bot]})，再來！`; return; }
+        const win=(player==='r'&&bot==='s')||(player==='p'&&bot==='r')||(player==='s'&&bot==='p');
+        msg.innerText=win?`贏了！(${icon[bot]})` : `輸了！(${icon[bot]})`;
+        rpsWinnerSide = win?1:2; setTimeout(()=>showIdentitySelect(win), 1000);
     }
 
-    // [路徑 3-c] 勝者決定身分 (垂直對齊)
     function showIdentitySelect(isUserWinner) {
-        const title = isUserWinner ? "您贏了！請選擇您的身分" : "對方贏了！請選擇對方的身分";
+        const title = isUserWinner ? "您贏了！請選擇身分" : "對方贏了！請選擇身分";
         contentBox.innerHTML = `
             <div class="setup-title">${title}</div>
             <button class="flow-btn" onclick="finalRoomStart('P')">Player go</button>
@@ -156,55 +133,94 @@
     }
 
     function finalRoomStart(type) {
-        if(rpsWinnerSide === 1) startGame('ROOM', 1, type, 'P');
+        let winnerSide = 1;
+        if(winnerSide===1) startGame('ROOM', 1, type, 'P');
         else startGame('ROOM', 1, 'P', type);
     }
 
     function startGame(mode, side, bType, wType) {
-        BLACK_TYPE = bType; WHITE_TYPE = wType;
-        document.getElementById('setup-overlay').style.display = 'none';
-        initBoard();
-        if (getCurrentType() === 'B') triggerBotMove();
+        BLACK_TYPE=bType; WHITE_TYPE=wType;
+        document.getElementById('setup-overlay').style.display='none';
+        initBoard(); if(getCurrentType()==='B') triggerBotMove();
     }
 
-    function getCurrentType() { return turn === 1 ? BLACK_TYPE : WHITE_TYPE; }
+    function getCurrentType() { return turn===1 ? BLACK_TYPE : WHITE_TYPE; }
 
-    // --- 核心引擎 (無更動，確保繼承 v1.9.9) ---
     const canvas = document.getElementById('gameBoard');
     const ctx = canvas.getContext('2d');
     const HEX_SIZE = 32; const OFFSET = { x: 275, y: 275 };
     let board = {}; let turn = 1; let selectedTail = null; let legalTargets = []; let previewTarget = null; let currentMoveInfo = null; let score = { 1: 0, 2: 0 };
     const DIRS = [{q:1,r:-1},{q:1,r:0},{q:0,r:1},{q:-1,r:1},{q:-1,r:0},{q:0,r:-1}];
 
+    // --- [核心進版手術：模擬人類操作流程] ---
     function triggerBotMove() {
-        if (isBotThinking) return; isBotThinking = true;
-        setTimeout(() => {
-            let moves = [];
-            for (let key in board) {
-                if (board[key] === turn) {
-                    let [q, r] = key.split(',').map(Number);
-                    calculateLegalMoves(q, r);
-                    legalTargets.forEach(t => moves.push({ ...t, tailQ: q, tailR: r }));
-                }
+        if (isBotThinking) return;
+        isBotThinking = true;
+
+        // 重置所有 UI 狀態
+        selectedTail = null; legalTargets = []; previewTarget = null; currentMoveInfo = null;
+
+        // 第一步：後台靜態運算 (毫秒級完成，不影響效率)
+        let moves = [];
+        for (let key in board) {
+            if (board[key] === turn) {
+                let [q, r] = key.split(',').map(Number);
+                // 掃描所有可能的移動，存入臨時 arrayMoves
+                const c = board[`${q},${r}`];
+                DIRS.forEach(dir => {
+                    let allies = [{q, r}]; 
+                    for (let i = 1; i < 3; i++) {
+                        if (board[`${q+dir.q*i},${r+dir.r*i}`] === c) allies.push({q: q+dir.q*i, r: r+dir.r*i});
+                        else break;
+                    }
+                    let myP = allies.length, head = allies[allies.length - 1], oppC = 0, canM = true, sP = { q: head.q + dir.q, r: head.r + dir.r };
+                    while (board[`${sP.q},${sP.r}`] !== undefined && board[`${sP.q},${sP.r}`] !== 0) {
+                        if (board[`${sP.q},${sP.r}`] === c) { canM = false; break; }
+                        oppC++; sP.q += dir.q; sP.r += dir.r;
+                    }
+                    if (canM && myP > oppC) moves.push({ q: head.q + dir.q, r: head.r + dir.r, dir, allies, oppCount: oppC, tailQ: q, tailR: r });
+                });
             }
-            if (moves.length === 0) { isBotThinking = false; return; }
-            moves.forEach(m => {
-                let s = Math.random();
-                if (m.oppCount > 0) s += 100 * aiSoul.weights.attack;
-                let dist = Math.abs(m.q) + Math.abs(m.r) + Math.abs(-m.q-m.r);
-                s += (10 - dist) * aiSoul.weights.center;
-                m.finalScore = s;
-            });
-            moves.sort((a,b) => b.finalScore - a.finalScore);
-            const best = moves[0];
-            selectedTail = {q: best.tailQ, r: best.tailR}; currentMoveInfo = best; previewTarget = {q: best.q, r: best.r};
-            draw();
-            setTimeout(() => { executeMove(); isBotThinking = false; }, 600);
-        }, 800);
+        }
+
+        if (moves.length === 0) { isBotThinking = false; return; }
+
+        // 權重評分
+        moves.forEach(m => {
+            let s = Math.random();
+            if (m.oppCount > 0) s += 100 * aiSoul.weights.attack;
+            let dist = Math.abs(m.q) + Math.abs(m.r) + Math.abs(-m.q-m.r);
+            s += (10 - dist) * aiSoul.weights.center;
+            m.finalScore = s;
+        });
+        moves.sort((a,b) => b.finalScore - a.finalScore);
+        const best = moves[0];
+
+        // 第二步：視覺上演繹點擊序列
+        setTimeout(() => {
+            // 模擬選取尾端 (產生黃圈與合規紅圈)
+            selectedTail = {q: best.tailQ, r: best.tailR};
+            calculateLegalMoves(best.tailQ, best.tailR); // 呼叫全域函數填充紅圈
+            draw(); updateOKVisuals();
+
+            setTimeout(() => {
+                // 模擬選取目標 (產生綠圈)
+                previewTarget = {q: best.q, r: best.r};
+                currentMoveInfo = best;
+                draw(); updateOKVisuals();
+
+                setTimeout(() => {
+                    // 執行移動
+                    executeMove();
+                    isBotThinking = false;
+                }, 1000); 
+            }, 1000);
+        }, 1000);
     }
 
     function executeMove() {
-        if (!currentMoveInfo) return; let nextBoard = {...board}; const moveInfo = currentMoveInfo;
+        if (!currentMoveInfo) return; 
+        let nextBoard = {...board}; const moveInfo = currentMoveInfo;
         moveInfo.allies.forEach(s => nextBoard[`${s.q},${s.r}`] = 0);
         moveInfo.allies.forEach(s => nextBoard[`${s.q + moveInfo.dir.q},${s.r + moveInfo.dir.r}`] = turn);
         if (moveInfo.oppCount > 0) {
@@ -224,14 +240,13 @@
         const typeStr = getCurrentType() === 'B' ? " (Robot)" : " (Player)";
         document.getElementById('status').innerText = (turn === 1 ? "黑棋回合" : "白棋回合") + typeStr;
         document.getElementById('score').innerText = `黑 ${score[1]} : ${score[2]} 白`;
-        document.getElementById('version-tag').innerText = `Abalone v1.10.1 | 功力: ${aiSoul.totalLearned}`;
+        document.getElementById('version-tag').innerText = `Abalone v1.10.3 | 功力: ${aiSoul.totalLearned}`;
         updateOKVisuals();
     }
 
     function updateOKVisuals() {
         const t = document.getElementById('okBtnTop'), b = document.getElementById('okBtnBottom');
         t.disabled = b.disabled = true; t.classList.remove('turn-glow', 'active-ready'); b.classList.remove('turn-glow', 'active-ready');
-        if (getCurrentType() === 'B') return;
         const activeBtn = (turn === 1 ? b : t);
         activeBtn.classList.add('turn-glow');
         if (previewTarget) { activeBtn.disabled = false; activeBtn.classList.add('active-ready'); }
@@ -275,7 +290,7 @@
     setupSurrender('surBtnTop'); setupSurrender('surBtnBottom');
 
     function handleInput(e) {
-        if (getCurrentType() === 'B') return;
+        if (isBotThinking) return;
         const {x, y} = getMousePos(e); let {q, r} = pixelToHex(x, y);
         if (board[`${q},${r}`] === undefined) return;
         if (board[`${q},${r}`] === turn) { previewTarget = null; currentMoveInfo = null; selectedTail = {q, r}; calculateLegalMoves(q, r); }
@@ -313,35 +328,4 @@
     function calculateLegalMoves(q, r) {
         legalTargets = []; const c = board[`${q},${r}`];
         DIRS.forEach(dir => {
-            let allies = [{q, r}]; for (let i = 1; i < 3; i++) { if (board[`${q+dir.q*i},${r+dir.r*i}`] === c) allies.push({q: q+dir.q*i, r: r+dir.r*i}); else break; }
-            let myP = allies.length, head = allies[allies.length - 1], oppC = 0, canM = true, sP = { q: head.q + dir.q, r: head.r + dir.r };
-            while (board[`${sP.q},${sP.r}`] !== undefined && board[`${sP.q},${sP.r}`] !== 0) { if (board[`${sP.q},${sP.r}`] === c) { canM = false; break; } oppC++; sP.q += dir.q; sP.r += dir.r; }
-            if (canM && myP > oppC) legalTargets.push({ q: head.q + dir.q, r: head.r + dir.r, dir, allies, oppCount: oppC });
-        });
-    }
-
-    const resetBtn = document.getElementById('resetBtn'); const progressCircle = document.getElementById('progressCircle');
-    let r_timer, r_start; const r_dur = 2000;
-    function r_press(e) { e.preventDefault(); r_start = Date.now(); r_timer = requestAnimationFrame(r_upd); }
-    function r_upd() {
-        const p = Math.min((Date.now() - r_start) / r_dur, 1); progressCircle.style.strokeDashoffset = 126 * (1 - p);
-        if (p < 1) r_timer = requestAnimationFrame(r_upd); else { if(confirm("重設？")) location.reload(); r_can(); }
-    }
-    function r_can() { cancelAnimationFrame(r_timer); progressCircle.style.strokeDashoffset = 126; }
-    resetBtn.addEventListener('mousedown', r_press); resetBtn.addEventListener('touchstart', r_press);
-    window.addEventListener('mouseup', r_can); window.addEventListener('touchend', r_can);
-
-    function updateLayout() {
-        const wrapper = document.getElementById('app-viewport'); const w = window.innerWidth, h = window.innerHeight;
-        wrapper.style.width = `${w}px`; wrapper.style.height = `${h}px`;
-        if (w > h) { wrapper.style.transform = `translate(0, 0) rotate(90deg)`; wrapper.style.width = `${h}px`; wrapper.style.height = `${w}px`; wrapper.style.left = `${(w - h) / 2}px`; wrapper.style.top = `${(h - w) / 2}px`; }
-        else { wrapper.style.transform = `none`; wrapper.style.left = `0`; wrapper.style.top = `0`; }
-    }
-    function exitGame() { if(confirm("離開？")) window.location.href = "../../index.html"; }
-    window.addEventListener('resize', updateLayout); canvas.addEventListener('mousedown', handleInput); canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInput(e); });
-    
-    updateLayout();
-    autoRoute(); // 執行無感跳轉邏輯
-</script>
-</body>
-</html>
+            let allies = [{q, r}]; for (let i = 1; i < 3; i++) { if (board[`${q+dir.q*i},${r+dir.r*i}`] === c) allies.push({q: q+dir.q
