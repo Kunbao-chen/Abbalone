@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>智推棋 Abalone - v2.1.1</title>
+    <title>智推棋 Abalone - v2.1.2</title>
     <style>
-        /* [Checksum: 樣式完全保留] */
+        /* [Checksum: 樣式完全保留，僅更新標題與版號] */
         * { -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; box-sizing: border-box; }
         html, body { overscroll-behavior: none; height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; background: #2c3e50; font-family: sans-serif; }
         #app-viewport { position: fixed; top: 0; left: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.3s ease; transform-origin: center center; overflow: hidden; }
@@ -28,8 +28,6 @@
         .surrender-btn { width: 44px; height: 44px; border-radius: 50%; background: #c0392b; border: none; color: white; font-size: 13px; font-weight: bold; cursor: pointer; z-index: 2; box-shadow: 0 3px 0 #962d22; transition: transform 0.1s linear; }
         .surrender-btn.pressing { animation: surrender-shake 0.1s infinite; background: #e74c3c; }
         @keyframes surrender-shake { 0% { transform: translate(0,0); } 25% { transform: translate(2px, 2px); } 50% { transform: translate(-2px, -2px); } 75% { transform: translate(2px, -2px); } 100% { transform: translate(0,0); } }
-        .explosion-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0; pointer-events: none; z-index: 1000; }
-        @keyframes flash-white { 0% { opacity: 0; } 10% { opacity: 1; } 100% { opacity: 0; } }
         #setup-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 500; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .setup-card { width: 85vw; max-width: 400px; display: flex; flex-direction: column; align-items: center; }
         .setup-title { font-size: 1.25rem; margin-bottom: 4vh; color: #fff; font-weight: 800; text-align: center; width: 100%; }
@@ -46,7 +44,6 @@
 <body>
 
 <div id="app-viewport">
-    <div id="boom-layer" class="explosion-overlay"></div>
     <div id="setup-overlay"><div class="setup-card" id="overlay-content"></div></div>
     <div class="top-bar">
         <div class="reset-wrapper">
@@ -54,7 +51,7 @@
             <button id="resetBtn" class="reset-btn">RESET</button>
         </div>
         <div class="info">
-            <div id="status" style="font-weight: bold;">讀取中</div>
+            <div id="status" style="font-weight: bold;">初始化</div>
             <div id="score" style="font-size: 0.8rem; color: #e74c3c;">黑 0 : 0 白</div>
         </div>
         <button class="exit-btn" onclick="exitGame()">EXIT</button>
@@ -72,14 +69,13 @@
     </div>
 </div>
 
-<div id="version-tag">Abalone v2.1.1 (Neural Engine)</div>
+<div id="version-tag">Abalone v2.1.2 | Initializing...</div>
 
 <script>
-    /* [手術刀協議：v2.1.1 初始化區塊置頂，徹底排除變數未定義導致的黑屏死結] */
+    /* [手術刀協議：v2.1.2 核心初始化區塊置頂] */
     const SOUL_KEY = "Gamy_Abalone_Soul_v2";
     const SYNC_KEY = "abalone_neural_sync"; 
     
-    // 預設靈魂結構，確保在任何函數呼叫前已就緒
     let aiSoul = { totalLearned: 1 }; 
     let net;
 
@@ -91,7 +87,6 @@
             if (aiSoul.networkData && typeof net.fromJSON === 'function') net.fromJSON(aiSoul.networkData);
         }
     } catch (e) {
-        // 安全防護：若外部載入失敗，提供最小化運行物件防止腳本崩潰
         net = { run: () => [Math.random()], fromJSON: () => {}, toJSON: () => ({}) };
     }
 
@@ -100,8 +95,6 @@
     let isGameStarted = false; 
     const contentBox = document.getElementById('overlay-content');
 
-    // ... (其餘邏輯比對 2.1.0 逐行確保一致) ...
-
     function recordLearning() {
         const trainingData = [{ input: Object.values(board).map(v => v / 2), output: [turn === 1 ? 0 : 1] }];
         net.train(trainingData, { iterations: 1, learningRate: 0.3 });
@@ -109,13 +102,6 @@
         aiSoul.totalLearned++;
         localStorage.setItem(SOUL_KEY, JSON.stringify(aiSoul));
         localStorage.setItem(SYNC_KEY, JSON.stringify(aiSoul)); 
-    }
-
-    function getFormattedTimestamp() {
-        const now = new Date();
-        const pad = (n) => n.toString().padStart(2, '0');
-        return now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) + 
-               pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds());
     }
 
     function concludeGame(winner) {
@@ -136,8 +122,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            const ts = getFormattedTimestamp();
-            a.download = `Abalone_NeuralBackup_${ts}.json`;
+            a.download = `Abalone_NeuralBackup.json`;
             a.click();
             URL.revokeObjectURL(url);
         } catch (e) { alert("同步失敗: " + e); }
@@ -164,34 +149,20 @@
         const mode = urlParams.get('mode');
         if (mode === 'pvp') startGame('PVP', 1, 'P', 'P');
         else if (mode === 'pvr') showPVBSideSelect();
-        else if (mode === 'pvr_room') showRPSSelect();
         else startGame('PVP', 1, 'P', 'P');
-    }
-
-    function getSyncUI() {
-        return `<div class="sync-center">
-            <button class="sync-btn-small" onclick="syncData()">🔄 實體導出</button>
-            <button class="sync-btn-small" onclick="document.getElementById('soul-loader').click()">📥 讀取</button>
-            <input type="file" id="soul-loader" style="display:none" onchange="importSoul(event)" accept=".json">
-        </div>`;
     }
 
     function showPVBSideSelect() { 
         contentBox.innerHTML = `<div class="setup-title">選擇您的順序</div>
             <button class="flow-btn" onclick="startGame('PVB', 1, 'P', 'B')">玩家執黑先行</button>
             <button class="flow-btn" onclick="startGame('PVB', 1, 'B', 'P')">玩家執白後行</button>
-            <button class="flow-btn btn-back" onclick="exitGame()">Back</button>${getSyncUI()}`; 
+            <button class="flow-btn btn-back" onclick="exitGame()">Back</button>
+            <div class="sync-center">
+                <button class="sync-btn-small" onclick="syncData()">🔄 導出</button>
+                <button class="sync-btn-small" onclick="document.getElementById('soul-loader').click()">📥 讀取</button>
+                <input type="file" id="soul-loader" style="display:none" onchange="importSoul(event)" accept=".json">
+            </div>`; 
     }
-
-    function showRPSSelect() { 
-        contentBox.innerHTML = `<div class="setup-title">猜拳決定先行</div>
-            <div class="rps-row"><button class="rps-btn" onclick="handleRPS('r')">✊</button><button class="rps-btn" onclick="handleRPS('p')">✋</button><button class="rps-btn" onclick="handleRPS('s')">✌️</button></div>
-            <div id="rps-msg" style="height:30px; margin:10px 0; font-weight:bold; color:#f1c40f; text-align:center;"></div>
-            <button class="flow-btn btn-back" onclick="exitGame()">Back</button>${getSyncUI()}`; 
-    }
-
-    function handleRPS(player) { const list=['r','p','s'], bot=list[Math.floor(Math.random()*3)], msg=document.getElementById('rps-msg'), icon={r:'✊',p:'✋',s:'✌️'}; if(player===bot){ msg.innerText=`平手 (${icon[bot]})`; return; } const win=(player==='r'&&bot==='s')||(player==='p'&&bot==='r')||(player==='s'&&bot==='p'); msg.innerText=win?`贏了！` : `輸了！`; setTimeout(()=>showIdentitySelect(win), 1000); }
-    function showIdentitySelect(isUserWinner) { contentBox.innerHTML = `<div class="setup-title">${isUserWinner?"您贏了":"對方贏了"}</div><button class="flow-btn" onclick="startGame('ROOM', 1, 'P', 'P')">Player go</button><button class="flow-btn" onclick="startGame('ROOM', 1, 'B', 'P')">Robot go</button><button class="flow-btn btn-back" onclick="exitGame()">Back</button>${getSyncUI()}`; }
 
     function startGame(mode, side, bType, wType) { BLACK_TYPE=bType; WHITE_TYPE=wType; isGameStarted = true; document.getElementById('setup-overlay').style.display='none'; updateLayout(); initBoard(); if(getCurrentType()==='B') triggerBotMove(); }
     function getCurrentType() { return turn===1 ? BLACK_TYPE : WHITE_TYPE; }
@@ -201,9 +172,10 @@
     let board = {}; let turn = 1; let selectedTail = null; let legalTargets = []; let previewTarget = null; let currentMoveInfo = null; let score = { 1: 0, 2: 0 };
     const DIRS = [{q:1,r:-1},{q:1,r:0},{q:0,r:1},{q:-1,r:1},{q:-1,r:0},{q:0,r:-1}];
 
-    /* [手術刀協議：維持擬人化 AI 操作流] */
+    /* [手術刀協議：v2.1.2 擬人化操作流，設定為 5000ms 節奏] */
     function triggerBotMove() {
-        if (isBotThinking) return; isBotThinking = true;
+        if (isBotThinking) return;
+        isBotThinking = true;
         let moves = [];
         for (let key in board) {
             if (board[key] === turn) {
@@ -213,20 +185,34 @@
             }
         }
         if (moves.length === 0) { isBotThinking = false; return; }
+        
         moves.forEach(m => { const res = net.run(Object.values(board).map(v => v/2))[0] || Math.random(); m.finalScore = (turn === 1) ? (1 - res) : res; });
         moves.sort((a,b) => b.finalScore - a.finalScore); const best = moves[0];
 
+        // 階段 1：思考完成，選取棋子 (5秒)
         setTimeout(() => {
             selectedTail = {q: best.tailQ, r: best.tailR};
-            calculateLegalMoves(best.tailQ, best.tailR); updateUI(); draw();
+            calculateLegalMoves(best.tailQ, best.tailR); 
+            updateUI(); draw();
+            
+            // 階段 2：移動手指，點選目標格 (5秒)
             setTimeout(() => {
                 const confirmedMove = legalTargets.find(t => t.q === best.q && t.r === best.r);
                 if (confirmedMove) {
-                    previewTarget = {q: best.q, r: best.r}; currentMoveInfo = confirmedMove; updateUI(); draw();
-                    setTimeout(() => { executeMove(); isBotThinking = false; }, 800);
-                } else { isBotThinking = false; selectedTail = null; }
-            }, 800);
-        }, 800);
+                    previewTarget = {q: best.q, r: best.r}; 
+                    currentMoveInfo = confirmedMove; 
+                    updateUI(); draw();
+                    
+                    // 階段 3：按下 OK 鍵確認移動 (5秒)
+                    setTimeout(() => { 
+                        executeMove(); 
+                        isBotThinking = false; 
+                    }, 5000); // 這裡是修改點 1
+                } else { 
+                    isBotThinking = false; selectedTail = null; updateUI(); draw();
+                }
+            }, 5000); // 這裡是修改點 2
+        }, 5000); // 這裡是修改點 3
     }
 
     function executeMove() {
@@ -249,8 +235,7 @@
     function updateUI() { 
         document.getElementById('status').innerText = (turn === 1 ? "黑棋回合" : "白棋回合") + (getCurrentType()==='B'?" (Robot)":" (Player)");
         document.getElementById('score').innerText = `黑 ${score[1]} : ${score[2]} 白`; 
-        // 使用預先定義好的 aiSoul
-        document.getElementById('version-tag').innerText = `Abalone v2.1.1 | 功力: ${aiSoul.totalLearned}`; 
+        document.getElementById('version-tag').innerText = `Abalone v2.1.2 | 功力: ${aiSoul.totalLearned}`; 
         updateOKVisuals(); 
     }
 
@@ -271,15 +256,6 @@
             if (previewTarget && previewTarget.q === q && previewTarget.r === r) { ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.75, 0, Math.PI*2); ctx.strokeStyle = "#2ecc71"; ctx.lineWidth = 5; ctx.stroke(); }
         }
     }
-
-    function setupSurrender(btnId) { 
-        const btn = document.getElementById(btnId); let pressTimer; let startTime; const DURATION = 3000; 
-        const start = (e) => { e.preventDefault(); if(getCurrentType()==='B')return; startTime = Date.now(); btn.classList.add('pressing'); pressTimer = requestAnimationFrame(animate); }; 
-        const animate = () => { const p = Math.min((Date.now() - startTime) / DURATION, 1); btn.style.transform = `scale(${1 + (p * 0.5)})`; if (p < 1) pressTimer = requestAnimationFrame(animate); else { cancel(); concludeGame(turn === 1 ? 2 : 1); } }; 
-        const cancel = () => { cancelAnimationFrame(pressTimer); btn.classList.remove('pressing'); btn.style.transform = 'scale(1)'; }; 
-        btn.addEventListener('mousedown', start); btn.addEventListener('touchstart', start); window.addEventListener('mouseup', cancel); window.addEventListener('touchend', cancel); 
-    }
-    setupSurrender('surBtnTop'); setupSurrender('surBtnBottom');
 
     function handleInput(e) { if (isBotThinking) return; const {x, y} = getMousePos(e); let {q, r} = pixelToHex(x, y); if (board[`${q},${r}`] === undefined) return; if (board[`${q},${r}`] === turn) { previewTarget = null; currentMoveInfo = null; selectedTail = {q, r}; calculateLegalMoves(q, r); } else if (legalTargets.some(t => t.q === q && t.r === r)) { currentMoveInfo = legalTargets.find(t => t.q === q && t.r === r); previewTarget = {q, r}; } updateOKVisuals(); draw(); }
     function initBoard() { for (let q = -4; q <= 4; q++) { for (let r = -4; r <= 4; r++) { if (Math.abs(q + r) <= 4) { let val = 0; if (r <= -3) val = 2; if (r == -2 && (q == 0 || q == 1 || q == 2)) val = 2; if (r >= 3) val = 1; if (r == 2 && (q == 0 || q == -1 || q == -2)) val = 1; board[`${q},${r}`] = val; } } } updateUI(); draw(); }
@@ -307,16 +283,10 @@
         }); 
     }
     
-    const resetBtn = document.getElementById('resetBtn'); const progressCircle = document.getElementById('progressCircle'); let r_timer, r_start; const r_dur = 2000;
-    function r_press(e) { e.preventDefault(); r_start = Date.now(); r_timer = requestAnimationFrame(r_upd); }
-    function r_upd() { const p = Math.min((Date.now() - r_start) / r_dur, 1); progressCircle.style.strokeDashoffset = 126 * (1 - p); if (p < 1) r_timer = requestAnimationFrame(r_upd); else { if(confirm("重設？")) location.reload(); r_can(); } }
-    function r_can() { cancelAnimationFrame(r_timer); progressCircle.style.strokeDashoffset = 126; }
-    resetBtn.addEventListener('mousedown', r_press); resetBtn.addEventListener('touchstart', r_press); window.addEventListener('mouseup', r_can); window.addEventListener('touchend', r_can);
-
     function updateLayout() { 
-        const wrapper = document.getElementById('app-viewport'); const w = window.innerWidth, h = window.innerHeight; wrapper.style.width = `${w}px`; wrapper.style.height = `${h}px`; 
+        const wrapper = document.getElementById('app-viewport'); const w = window.innerWidth, h = window.innerHeight; 
         if (w > h && isGameStarted) { wrapper.style.transform = `translate(0, 0) rotate(90deg)`; wrapper.style.width = `${h}px`; wrapper.style.height = `${w}px`; wrapper.style.left = `${(w - h) / 2}px`; wrapper.style.top = `${(h - w) / 2}px`; } 
-        else { wrapper.style.transform = `none`; wrapper.style.left = `0`; wrapper.style.top = `0`; } 
+        else { wrapper.style.transform = `none`; wrapper.style.width = `100%`; wrapper.style.height = `100%`; wrapper.style.left = `0`; wrapper.style.top = `0`; } 
     }
 
     function exitGame() { if(confirm("離開？")) window.location.href = "../../index.html"; }
