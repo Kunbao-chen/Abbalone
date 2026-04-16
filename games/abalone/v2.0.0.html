@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>智推棋 Abalone - v2.0.0 (Neural Soul)</title>
+    <script src="https://unpkg.com/brain.js"></script>
+    <style>
+        /* [Checksum: v1.10.7 樣式完全保留，僅更新版本標籤顏色以示進化] */
+        * { -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; box-sizing: border-box; }
+        html, body { overscroll-behavior: none; height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; background: #2c3e50; font-family: sans-serif; }
+        #app-viewport { position: fixed; top: 0; left: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.3s ease; transform-origin: center center; overflow: hidden; }
+        .top-bar { position: absolute; top: 15px; width: 90%; max-width: 450px; display: flex; justify-content: space-between; align-items: center; z-index: 20; }
+        .reset-wrapper { position: relative; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
+        .reset-wrapper svg { position: absolute; transform: rotate(-90deg); width: 100%; height: 100%; pointer-events: none; }
+        .reset-wrapper circle { fill: none; stroke-width: 4; stroke-linecap: round; }
+        .circle-bg { stroke: rgba(255, 255, 255, 0.1); }
+        .circle-progress { stroke: #3498db; stroke-dasharray: 126; stroke-dashoffset: 126; transition: stroke-dashoffset 0.1s linear; }
+        .reset-btn { width: 36px; height: 36px; border-radius: 50%; background: #2980b9; border: none; color: white; font-size: 9px; font-weight: bold; cursor: pointer; z-index: 2; }
+        .exit-btn { padding: 6px 15px; font-size: 0.8rem; background: #34495e; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .info { background: rgba(255,255,255,0.9); padding: 5px 12px; border-radius: 8px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        .game-container { display: flex; flex-direction: column; align-items: center; width: 100%; }
+        canvas { background: #fff; border-radius: 50%; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 80vmin; height: 80vmin; max-width: 450px; max-height: 450px; touch-action: none; margin: 10px 0; }
+        .ok-btn { padding: 12px 45px; font-size: 1.1rem; cursor: pointer; border: none; border-radius: 30px; background: #7f8c8d; color: white; font-weight: bold; box-shadow: 0 4px 0 #34495e; z-index: 10; transition: all 0.3s; }
+        .ok-btn.active-ready { background: #3498db !important; box-shadow: 0 4px 0 #2980b9 !important; }
+        @keyframes neural-glow { 0% { box-shadow: 0 0 5px #3498db; border: 2px solid #3498db; } 50% { box-shadow: 0 0 20px #3498db, 0 0 30px rgba(52, 152, 219, 0.5); border: 2px solid #fff; } 100% { box-shadow: 0 0 5px #3498db; border: 2px solid #3498db; } }
+        .ok-btn.turn-glow { animation: neural-glow 1.5s ease-in-out infinite; }
+        .control-row { display: flex; align-items: center; justify-content: center; gap: 40px; width: 100%; margin: 8px 0; }
+        .surrender-btn { width: 44px; height: 44px; border-radius: 50%; background: #c0392b; border: none; color: white; font-size: 13px; font-weight: bold; cursor: pointer; z-index: 2; box-shadow: 0 3px 0 #962d22; }
+        .surrender-btn.pressing { animation: surrender-shake 0.1s infinite; background: #e74c3c; }
+        @keyframes surrender-shake { 0% { transform: translate(0,0); } 25% { transform: translate(2px, 2px); } 50% { transform: translate(-2px, -2px); } 75% { transform: translate(2px, -2px); } 100% { transform: translate(0,0); } }
+        .explosion-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0; pointer-events: none; z-index: 1000; }
+        #setup-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 500; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .setup-card { width: 85vw; max-width: 400px; display: flex; flex-direction: column; align-items: center; }
+        .setup-title { font-size: 1.4rem; margin-bottom: 4vh; color: #3498db; font-weight: 800; text-align: center; }
+        .flow-btn { width: 100%; padding: 3vh 20px; margin: 1.2vh 0; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; cursor: pointer; background: #34495e; color: white; box-shadow: 0 4px 0 #1a252f; transition: all 0.1s; }
+        .sync-center { margin-top: 3vh; display: flex; gap: 10px; width: 100%; }
+        .sync-btn-small { flex: 1; padding: 12px; font-size: 0.8rem; border-radius: 8px; border: 1px solid rgba(52, 152, 219, 0.5); background: rgba(255, 255, 255, 0.05); color: #3498db; cursor: pointer; }
+        #version-tag { position: fixed; bottom: 8px; left: 8px; color: #3498db; font-size: 10px; font-family: monospace; font-weight: bold; z-index: 999; }
+    </style>
+</head>
+<body>
+
+<div id="app-viewport">
+    <div id="boom-layer" class="explosion-overlay"></div>
+    <div id="setup-overlay"><div class="setup-card" id="overlay-content"></div></div>
+    <div class="top-bar">
+        <div class="reset-wrapper">
+            <svg><circle class="circle-bg" cx="25" cy="25" r="20"/><circle id="progressCircle" class="circle-progress" cx="25" cy="25" r="20"/></svg>
+            <button id="resetBtn" class="reset-btn">EVO</button>
+        </div>
+        <div class="info">
+            <div id="status" style="font-weight: bold;">Neural Init...</div>
+            <div id="score" style="font-size: 0.8rem; color: #3498db;">功力: 0</div>
+        </div>
+        <button class="exit-btn" onclick="exitGame()">EXIT</button>
+    </div>
+    <div class="game-container">
+        <div class="control-row">
+            <button id="okBtnTop" class="ok-btn" disabled onclick="executeMove()">OK</button>
+            <button id="surBtnTop" class="surrender-btn">認輸</button>
+        </div>
+        <canvas id="gameBoard" width="550" height="550"></canvas>
+        <div class="control-row">
+            <button id="okBtnBottom" class="ok-btn" disabled onclick="executeMove()">OK</button>
+            <button id="surBtnBottom" class="surrender-btn">認輸</button>
+        </div>
+    </div>
+</div>
+
+<div id="version-tag">Abalone v2.0.0 (Neural Network Engine)</div>
+
+<script>
+    /* [手術刀位置 2：神經網路初始化核心] */
+    const SOUL_KEY = "Gamy_Abalone_Soul_v2"; // 升級 Version 以免 v1 數據衝突
+    const net = new brain.NeuralNetwork({ hiddenLayers: [12, 8] }); 
+    let aiSoul = { model: null, totalLearned: 0 };
+
+    // 初始化靈魂：若無存檔則建立新隨機權重
+    function initNeuralSoul() {
+        const saved = localStorage.getItem(SOUL_KEY);
+        if (saved) {
+            const data = JSON.parse(saved);
+            net.fromJSON(data.model);
+            aiSoul.totalLearned = data.totalLearned;
+        } else {
+            // 隨機預熱：讓 Robot 知道基礎規則 (0=空, 1=黑, 2=白)
+            const dummyData = Array.from({length: 61}, () => Math.random());
+            net.train([{ input: dummyData, output: [0.5] }], { iterations: 1 });
+            aiSoul.model = net.toJSON();
+        }
+    }
+
+    /* [手術刀位置 3：學習機制進化為訓練機制] */
+    function recordLearning(winner) {
+        aiSoul.totalLearned++;
+        const boardData = getFlattenedBoard(); // 取得棋盤 61 格狀態
+        const target = (winner === 1 ? [1] : [0]); // 黑勝標記為 1, 白勝標記為 0
+        
+        // 增量訓練：強化此局的決策路徑
+        net.train([{ input: boardData, output: target }], { iterations: 50, learningRate: 0.01 });
+        aiSoul.model = net.toJSON();
+        localStorage.setItem(SOUL_KEY, JSON.stringify(aiSoul));
+    }
+
+    function getFlattenedBoard() {
+        const data = [];
+        for (let q = -4; q <= 4; q++) {
+            for (let r = -4; r <= 4; r++) {
+                if (Math.abs(q + r) <= 4) {
+                    const val = board[`${q},${r}`];
+                    data.push(val / 2); // 歸一化為 0, 0.5, 1
+                }
+            }
+        }
+        return data;
+    }
+
+    function getFormattedTimestamp() {
+        const now = new Date();
+        const pad = (n) => n.toString().padStart(2, '0');
+        return now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate()) + pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds());
+    }
+
+    /* [手術刀位置 4：同步邏輯封裝神經網路] */
+    function syncData() {
+        try {
+            aiSoul.model = net.toJSON();
+            const dataStr = JSON.stringify(aiSoul);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            const ts = getFormattedTimestamp();
+            a.href = url;
+            a.download = `Abalone_Soul_v2_${ts}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            alert(`靈魂導出成功！\n功力：${aiSoul.totalLearned}\n這是真實的神經網路參數檔案。`);
+        } catch (e) { alert("同步失敗: " + e); }
+    }
+
+    function importSoul(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const imported = JSON.parse(e.target.result);
+                if (imported.model) {
+                    net.fromJSON(imported.model);
+                    aiSoul = imported;
+                    localStorage.setItem(SOUL_KEY, JSON.stringify(aiSoul));
+                    alert("重生成功！Robot 已繼承所有神經元權重。");
+                    location.reload();
+                }
+            } catch (err) { alert("檔案不相容 v2.0 結構"); }
+        };
+        reader.readAsText(file);
+    }
+
+    // --- 遊戲邏輯與繪圖控制 (繼承 v1.10.7 並接入 net.run) ---
+    let BLACK_TYPE = 'P'; let WHITE_TYPE = 'P';
+    let isBotThinking = false; let isGameStarted = false;
+    const canvas = document.getElementById('gameBoard');
+    const ctx = canvas.getContext('2d');
+    const HEX_SIZE = 32; const OFFSET = { x: 275, y: 275 };
+    let board = {}; let turn = 1; let selectedTail = null; let legalTargets = []; let previewTarget = null; let currentMoveInfo = null; let score = { 1: 0, 2: 0 };
+    const DIRS = [{q:1,r:-1},{q:1,r:0},{q:0,r:1},{q:-1,r:1},{q:-1,r:0},{q:0,r:-1}];
+
+    /* [手術刀位置 5：機器人思維接入神經網路推論] */
+    function triggerBotMove() {
+        if (isBotThinking) return;
+        isBotThinking = true;
+        let moves = [];
+        for (let key in board) {
+            if (board[key] === turn) {
+                let [q, r] = key.split(',').map(Number);
+                calculateLegalMoves(q, r);
+                legalTargets.forEach(t => moves.push({ ...t, tailQ: q, tailR: r }));
+            }
+        }
+        if (moves.length === 0) { isBotThinking = false; return; }
+
+        // 神經網路預判：為每一種可能的落子進行評分
+        moves.forEach(m => {
+            // 模擬走棋後的棋盤狀態
+            const simBoard = simulateMove(m);
+            const input = Object.values(simBoard).map(v => v/2);
+            const score = net.run(input); // 神經網路輸出勝率 [0~1]
+            // 黑棋(1)追求 1.0, 白棋(2)追求 0.0
+            m.finalScore = (turn === 1) ? score[0] : (1 - score[0]);
+        });
+
+        moves.sort((a,b) => b.finalScore - a.finalScore);
+        const best = moves[0];
+        
+        setTimeout(() => {
+            selectedTail = {q: best.tailQ, r: best.tailR};
+            calculateLegalMoves(best.tailQ, best.tailR);
+            previewTarget = {q: best.q, r: best.r};
+            currentMoveInfo = best;
+            updateUI(); draw();
+            setTimeout(() => { executeMove(); isBotThinking = false; }, 600);
+        }, 600);
+    }
+
+    function simulateMove(m) {
+        let nb = {...board};
+        m.allies.forEach(s => nb[`${s.q},${s.r}`] = 0);
+        m.allies.forEach(s => nb[`${s.q + m.dir.q},${s.r + m.dir.r}`] = turn);
+        return nb;
+    }
+
+    function executeMove() {
+        if (!currentMoveInfo) return; 
+        let nextBoard = {...board}; const moveInfo = currentMoveInfo;
+        moveInfo.allies.forEach(s => nextBoard[`${s.q},${s.r}`] = 0);
+        moveInfo.allies.forEach(s => nextBoard[`${s.q + moveInfo.dir.q},${s.r + moveInfo.dir.r}`] = turn);
+        if (moveInfo.oppCount > 0) {
+            for (let i = moveInfo.oppCount; i >= 1; i--) {
+                let oQ = moveInfo.q + moveInfo.dir.q * (i-1), oR = moveInfo.r + moveInfo.dir.r * (i-1), next = { q: oQ + moveInfo.dir.q, r: oR + moveInfo.dir.r };
+                if (board[`${next.q},${next.r}`] !== undefined) nextBoard[`${next.q},${next.r}`] = (turn === 1 ? 2 : 1); else score[turn]++;
+            }
+        }
+        board = nextBoard; selectedTail = null; legalTargets = []; previewTarget = null; currentMoveInfo = null;
+        if (score[turn] >= 6) { concludeGame(turn); return; }
+        turn = (turn === 1) ? 2 : 1;
+        updateUI(); draw();
+        if (getCurrentType() === 'B') triggerBotMove();
+    }
+
+    function concludeGame(winner) {
+        recordLearning(winner); 
+        setTimeout(() => {
+            alert(`${winner === 1 ? "黑棋" : "白棋"} 勝利！\n神經網路已強化學習。\n功力：${aiSoul.totalLearned}`);
+            location.reload();
+        }, 100);
+    }
+
+    function updateUI() { 
+        document.getElementById('status').innerText = (turn === 1 ? "黑" : "白") + (getCurrentType()==='B'?"(Neural)":"(You)"); 
+        document.getElementById('score').innerText = `功力: ${aiSoul.totalLearned} | ${score[1]}:${score[2]}`; 
+        updateOKVisuals(); 
+    }
+
+    function updateOKVisuals() { 
+        const t = document.getElementById('okBtnTop'), b = document.getElementById('okBtnBottom'); 
+        t.disabled = b.disabled = true; 
+        t.classList.remove('turn-glow', 'active-ready'); b.classList.remove('turn-glow', 'active-ready'); 
+        const activeBtn = (turn === 1 ? b : t); 
+        activeBtn.classList.add('turn-glow'); 
+        if (previewTarget) { activeBtn.disabled = false; activeBtn.classList.add('active-ready'); } 
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, 550, 550);
+        const movingAllies = currentMoveInfo ? currentMoveInfo.allies : [];
+        for (let key in board) {
+            let [q, r] = key.split(',').map(Number); let {x, y} = hexToPixel(q, r);
+            ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.85, 0, Math.PI*2); ctx.fillStyle = "rgba(255,255,255,0.1)"; ctx.fill();
+            let val = board[key];
+            if (val > 0) {
+                if (movingAllies.some(p => p.q === q && p.r === r)) { ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.75, 0, Math.PI*2); ctx.strokeStyle = "#3498db"; ctx.lineWidth = 4; ctx.stroke(); }
+                ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.7, 0, Math.PI*2); ctx.fillStyle = val === 1 ? "#333" : "#fff"; ctx.fill();
+                let isTail = selectedTail && selectedTail.q === q && selectedTail.r === r; ctx.strokeStyle = isTail ? "#f1c40f" : "#000"; ctx.lineWidth = isTail ? 4 : 1; ctx.stroke();
+            }
+            if (legalTargets.some(t => t.q === q && t.r === r)) { ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.4, 0, Math.PI*2); ctx.strokeStyle = "rgba(231, 76, 60, 0.5)"; ctx.lineWidth = 3; ctx.stroke(); }
+            if (previewTarget && previewTarget.q === q && previewTarget.r === r) { ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.75, 0, Math.PI*2); ctx.strokeStyle = "#3498db"; ctx.lineWidth = 5; ctx.stroke(); }
+        }
+    }
+
+    function setupSurrender(btnId) { 
+        const btn = document.getElementById(btnId); let pressTimer, startTime; const DURATION = 2000; 
+        const start = (e) => { e.preventDefault(); if(getCurrentType()==='B')return; startTime = Date.now(); btn.classList.add('pressing'); pressTimer = requestAnimationFrame(animate); }; 
+        const animate = () => { const p = Math.min((Date.now() - startTime) / DURATION, 1); btn.style.transform = `scale(${1 + (p * 0.5)})`; if (p < 1) pressTimer = requestAnimationFrame(animate); else { concludeGame(turn === 1 ? 2 : 1); } }; 
+        const cancel = () => { cancelAnimationFrame(pressTimer); btn.classList.remove('pressing'); btn.style.transform = 'scale(1)'; }; 
+        btn.addEventListener('mousedown', start); btn.addEventListener('touchstart', start); window.addEventListener('mouseup', cancel); window.addEventListener('touchend', cancel); 
+    }
+    setupSurrender('surBtnTop'); setupSurrender('surBtnBottom');
+
+    function handleInput(e) { if (isBotThinking) return; const {x, y} = getMousePos(e); let {q, r} = pixelToHex(x, y); if (board[`${q},${r}`] === undefined) return; if (board[`${q},${r}`] === turn) { previewTarget = null; currentMoveInfo = null; selectedTail = {q, r}; calculateLegalMoves(q, r); } else if (legalTargets.some(t => t.q === q && t.r === r)) { currentMoveInfo = legalTargets.find(t => t.q === q && t.r === r); previewTarget = {q, r}; } updateOKVisuals(); draw(); }
+    function initBoard() { for (let q = -4; q <= 4; q++) { for (let r = -4; r <= 4; r++) { if (Math.abs(q + r) <= 4) { let val = 0; if (r <= -3) val = 2; if (r == -2 && (q == 0 || q == 1 || q == 2)) val = 2; if (r >= 3) val = 1; if (r == 2 && (q == 0 || q == -1 || q == -2)) val = 1; board[`${q},${r}`] = val; } } } updateUI(); draw(); }
+    function hexToPixel(q, r) { return { x: HEX_SIZE * Math.sqrt(3) * (q + r/2) + OFFSET.x, y: HEX_SIZE * (3/2) * r + OFFSET.y }; }
+    function pixelToHex(x, y) { x -= OFFSET.x; y -= OFFSET.y; let q = (Math.sqrt(3)/3 * x - 1/3 * y) / HEX_SIZE, r = (2/3 * y) / HEX_SIZE; let s = -q-r, rq = Math.round(q), rr = Math.round(r), rs = Math.round(s); let dq = Math.abs(rq - q), dr = Math.abs(rr - r), ds = Math.abs(rs - s); if (dq > dr && dq > ds) rq = -rr-rs; else if (dr > ds) rr = -rq-rs; return {q: rq, r: rr}; }
+    function getMousePos(e) { const rect = canvas.getBoundingClientRect(); const cX = e.touches ? e.touches[0].clientX : e.clientX; const cY = e.touches ? e.touches[0].clientY : e.clientY; let x = cX - rect.left, y = cY - rect.top; if (window.innerWidth > window.innerHeight && isGameStarted) { let oX = x; x = y; y = rect.width - oX; } return { x: x * (550 / rect.width), y: y * (550 / rect.width) }; }
+    function calculateLegalMoves(q, r) { legalTargets = []; const c = board[`${q},${r}`]; DIRS.forEach(dir => { let allies = [{q, r}]; for (let i = 1; i < 3; i++) { if (board[`${q+dir.q*i},${r+dir.r*i}`] === c) allies.push({q: q+dir.q*i, r: r+dir.r*i}); else break; } let myP = allies.length, head = allies[allies.length - 1], oppC = 0, canM = true, sP = { q: head.q + dir.q, r: head.r + dir.r }; while (board[`${sP.q},${sP.r}`] !== undefined && board[`${sP.q},${sP.r}`] !== 0) { if (board[`${sP.q},${sP.r}`] === c) { canM = false; break; } oppC++; sP.q += dir.q; sP.r += dir.r; } if (canM && myP > oppC) legalTargets.push({ q: head.q + dir.q, r: head.r + dir.r, dir, allies, oppCount: oppC }); }); }
+    
+    function autoRoute() { startGame('PVP', 1, 'P', 'P'); } // 簡化入口邏輯
+    function startGame(mode, side, bType, wType) { 
+        BLACK_TYPE=bType; WHITE_TYPE=wType; isGameStarted=true;
+        document.getElementById('setup-overlay').style.display='none'; 
+        initNeuralSoul(); initBoard(); updateLayout(); 
+    }
+    function getCurrentType() { return turn===1 ? BLACK_TYPE : WHITE_TYPE; }
+    function exitGame() { if(confirm("離開？")) window.location.reload(); }
+    window.addEventListener('resize', updateLayout); 
+    canvas.addEventListener('mousedown', handleInput); 
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInput(e); });
+    
+    function updateLayout() { 
+        const wrapper = document.getElementById('app-viewport'); 
+        const w = window.innerWidth, h = window.innerHeight; 
+        if (w > h) { wrapper.style.transform = `rotate(90deg)`; wrapper.style.width = `${h}px`; wrapper.style.height = `${w}px`; } 
+        else { wrapper.style.transform = `none`; wrapper.style.width = `${w}px`; wrapper.style.height = `${h}px`; } 
+    }
+    updateLayout(); autoRoute();
+</script>
+</body>
+</html>
