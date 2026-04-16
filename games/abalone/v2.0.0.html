@@ -6,7 +6,7 @@
     <title>智推棋 Abalone - v2.0.0</title>
     <script src="https://unpkg.com/brain.js"></script>
     <style>
-        /* [Checksum: v1.10.7 樣式完全保留] */
+        /* [Checksum: v1.10.6 樣式完全保留] */
         * { -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; box-sizing: border-box; }
         html, body { overscroll-behavior: none; height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; background: #2c3e50; font-family: sans-serif; }
         #app-viewport { position: fixed; top: 0; left: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.3s ease; transform-origin: center center; overflow: hidden; }
@@ -75,23 +75,31 @@
 <div id="version-tag">Abalone v2.0.0</div>
 
 <script>
+    // [手術刀位置 2：代換 aiSoul 結構，並初始化 Brain.js]
     const SOUL_KEY = "Gamy_Abalone_Soul_v2";
     const SYNC_KEY = "abalone_neural_sync"; 
     const net = new brain.NeuralNetwork({ hiddenLayers: [12, 8] });
     const DEFAULT_SOUL = { networkData: null, totalLearned: 1 };
     
+    // 優先讀取同步鍵，再讀取本地舊版
     let aiSoul = JSON.parse(localStorage.getItem(SYNC_KEY)) || JSON.parse(localStorage.getItem(SOUL_KEY)) || DEFAULT_SOUL;
-    if (aiSoul.networkData) net.fromJSON(aiSoul.networkData);
-    else net.train([{ input: new Array(61).fill(0), output: [0.5] }], { iterations: 1 });
+    
+    if (aiSoul.networkData) {
+        net.fromJSON(aiSoul.networkData);
+    } else {
+        // 首次初始化：建立一個隨機权重的神經網路
+        net.train([{ input: new Array(61).fill(0), output: [0.5] }], { iterations: 1 });
+    }
 
     function recordLearning() {
         aiSoul.totalLearned++;
+        // 序列化神經網路權重
         aiSoul.networkData = net.toJSON();
         localStorage.setItem(SOUL_KEY, JSON.stringify(aiSoul));
         localStorage.setItem(SYNC_KEY, JSON.stringify(aiSoul)); 
     }
 
-    /* [Checksum: v1.10.7 Logic] */
+    /* 原有邏輯：生成檔案時間戳記 */
     function getFormattedTimestamp() {
         const now = new Date();
         const pad = (n) => n.toString().padStart(2, '0');
@@ -103,13 +111,14 @@
         updateUI();       
         setTimeout(() => {
             const winnerName = (winner === 1 ? "黑棋" : "白棋");
-            alert(`${winnerName} 勝利！\nNeural 功力提升至：${aiSoul.totalLearned}\n建議點擊 🔄 進行實體備份。`);
+            alert(`${winnerName} 勝利！\n當前功力：${aiSoul.totalLearned}\n建議點擊 🔄 進行實體備份。`);
             location.reload();
         }, 100);
     }
 
     function syncData() {
         try {
+            // [手術刀位置 3：同步時封裝最新神經權重]
             aiSoul.networkData = net.toJSON();
             localStorage.setItem(SYNC_KEY, JSON.stringify(aiSoul));
             localStorage.setItem(SOUL_KEY, JSON.stringify(aiSoul));
@@ -138,6 +147,7 @@
                 const imported = JSON.parse(e.target.result);
                 if (imported.totalLearned) {
                     aiSoul = imported;
+                    // 恢復神經權重
                     if (aiSoul.networkData) net.fromJSON(aiSoul.networkData);
                     localStorage.setItem(SYNC_KEY, JSON.stringify(aiSoul));
                     localStorage.setItem(SOUL_KEY, JSON.stringify(aiSoul));
@@ -149,11 +159,13 @@
         reader.readAsText(file);
     }
 
+    /* 遊戲狀態變數 */
     let BLACK_TYPE = 'P'; let WHITE_TYPE = 'P';
     let isBotThinking = false;
-    let isGameStarted = false; 
+    let isGameStarted = false; // 控制旋轉時機
     const contentBox = document.getElementById('overlay-content');
 
+    // [路由控制：根據參數決定初始化畫面]
     function autoRoute() {
         const urlParams = new URLSearchParams(window.location.search);
         const mode = urlParams.get('mode');
@@ -163,6 +175,7 @@
         else startGame('PVP', 1, 'P', 'P');
     }
 
+    // [同步UI組件]
     function getSyncUI() {
         return `
             <div class="sync-center">
@@ -173,6 +186,7 @@
         `;
     }
 
+    // [選單畫面 A：PVB 選擇先後手]
     function showPVBSideSelect() { 
         contentBox.innerHTML = `
             <div class="setup-title">選擇您的順序</div>
@@ -183,6 +197,7 @@
         `; 
     }
 
+    // [選單畫面 B：猜拳決定先手]
     function showRPSSelect() { 
         contentBox.innerHTML = `
             <div class="setup-title">猜拳決定先行</div>
@@ -221,6 +236,7 @@
 
     function getCurrentType() { return turn===1 ? BLACK_TYPE : WHITE_TYPE; }
 
+    /* 遊戲核心變數與繪圖 */
     const canvas = document.getElementById('gameBoard');
     const ctx = canvas.getContext('2d');
     const HEX_SIZE = 32; const OFFSET = { x: 275, y: 275 };
@@ -240,15 +256,18 @@
         }
         if (moves.length === 0) { isBotThinking = false; return; }
         
-        // [Neural Decision Path]
+        // [手術刀位置 4：代換評分公式為神經網路推論]
         moves.forEach(m => {
             const input = Object.values(board).map(v => v / 2);
             const res = net.run(input)[0] || Math.random();
+            // 黑(1)追求1，白(2)追求0
             m.finalScore = (turn === 1) ? (1 - res) : res;
         });
         
         moves.sort((a,b) => b.finalScore - a.finalScore);
         const best = moves[0];
+        
+        // 模擬思考延遲與演出
         setTimeout(() => {
             selectedTail = {q: best.tailQ, r: best.tailR};
             calculateLegalMoves(best.tailQ, best.tailR);
@@ -283,7 +302,14 @@
         if (getCurrentType() === 'B') triggerBotMove();
     }
 
-    function updateUI() { const typeStr = getCurrentType() === 'B' ? " (Robot)" : " (Player)"; document.getElementById('status').innerText = (turn === 1 ? "黑棋回合" : "白棋回合") + typeStr; document.getElementById('score').innerText = `黑 ${score[1]} : ${score[2]} 白`; document.getElementById('version-tag').innerText = `Abalone v2.0.0 | 功力: ${aiSoul.totalLearned}`; updateOKVisuals(); }
+    function updateUI() { 
+        const typeStr = getCurrentType() === 'B' ? " (Robot)" : " (Player)"; 
+        document.getElementById('status').innerText = (turn === 1 ? "黑棋回合" : "白棋回合") + typeStr; 
+        document.getElementById('score').innerText = `黑 ${score[1]} : ${score[2]} 白`; 
+        document.getElementById('version-tag').innerText = `Abalone v2.0.0 | 功力: ${aiSoul.totalLearned}`;
+        updateOKVisuals(); 
+    }
+
     function updateOKVisuals() { const t = document.getElementById('okBtnTop'), b = document.getElementById('okBtnBottom'); t.disabled = b.disabled = true; t.classList.remove('turn-glow', 'active-ready'); b.classList.remove('turn-glow', 'active-ready'); const activeBtn = (turn === 1 ? b : t); activeBtn.classList.add('turn-glow'); if (previewTarget) { activeBtn.disabled = false; activeBtn.classList.add('active-ready'); } }
     
     function draw() {
@@ -335,12 +361,14 @@
 
     function calculateLegalMoves(q, r) { legalTargets = []; const c = board[`${q},${r}`]; DIRS.forEach(dir => { let allies = [{q, r}]; for (let i = 1; i < 3; i++) { if (board[`${q+dir.q*i},${r+dir.r*i}`] === c) allies.push({q: q+dir.q*i, r: r+dir.r*i}); else break; } let myP = allies.length, head = allies[allies.length - 1], oppC = 0, canM = true, sP = { q: head.q + dir.q, r: head.r + dir.r }; while (board[`${sP.q},${sP.r}`] !== undefined && board[`${sP.q},${sP.r}`] !== 0) { if (board[`${sP.q},${sP.r}`] === c) { canM = false; break; } oppC++; sP.q += dir.q; sP.r += dir.r; } if (canM && myP > oppC) legalTargets.push({ q: head.q + dir.q, r: head.r + dir.r, dir, allies, oppCount: oppC }); }); }
     
+    /* 重設按鈕與進度條 */
     const resetBtn = document.getElementById('resetBtn'); const progressCircle = document.getElementById('progressCircle'); let r_timer, r_start; const r_dur = 2000;
     function r_press(e) { e.preventDefault(); r_start = Date.now(); r_timer = requestAnimationFrame(r_upd); }
-    function r_upd() { const p = Math.min((Date.now() - r_start) / r_dur, 1); progressCircle.style.strokeDashoffset = 126 * (1 - p); if (p < 1) r_timer = requestAnimationFrame(r_upd); else { if(confirm("重設？")) location.reload(); r_can(); } }
+    function r_upd() { const p = Math.min((Date.now() - r_start) / r_dur, 1); progressCircle.style.strokeDashoffset = 126 * (1 - p); if (p < 1) r_timer = requestAnimationFrame(r_upd); else { if(confirm("確定重設遊戲？")) location.reload(); r_can(); } }
     function r_can() { cancelAnimationFrame(r_timer); progressCircle.style.strokeDashoffset = 126; }
     resetBtn.addEventListener('mousedown', r_press); resetBtn.addEventListener('touchstart', r_press); window.addEventListener('mouseup', r_can); window.addEventListener('touchend', r_can);
 
+    /* 佈局適配邏輯 */
     function updateLayout() { 
         const wrapper = document.getElementById('app-viewport'); 
         const w = window.innerWidth, h = window.innerHeight; 
@@ -359,7 +387,7 @@
         } 
     }
 
-    function exitGame() { if(confirm("離開？")) window.location.href = "../../index.html"; }
+    function exitGame() { if(confirm("離開智推棋？")) window.location.href = "../../index.html"; }
     window.addEventListener('resize', updateLayout); 
     canvas.addEventListener('mousedown', handleInput); 
     canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInput(e); });
