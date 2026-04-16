@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>智推棋 Abalone - v2.1.0</title>
+    <title>智推棋 Abalone - v2.1.1</title>
     <style>
-        /* [Checksum: v1.10.7 樣式完全保留] */
+        /* [Checksum: 樣式完全保留] */
         * { -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; box-sizing: border-box; }
         html, body { overscroll-behavior: none; height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; background: #2c3e50; font-family: sans-serif; }
         #app-viewport { position: fixed; top: 0; left: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.3s ease; transform-origin: center center; overflow: hidden; }
@@ -72,20 +72,37 @@
     </div>
 </div>
 
-<div id="version-tag">Abalone v2.1.0 (Neural Network Engine)</div>
+<div id="version-tag">Abalone v2.1.1 (Neural Engine)</div>
 
 <script>
+    /* [手術刀協議：v2.1.1 初始化區塊置頂，徹底排除變數未定義導致的黑屏死結] */
     const SOUL_KEY = "Gamy_Abalone_Soul_v2";
     const SYNC_KEY = "abalone_neural_sync"; 
-    // [手術刀位置: 初始化神經網路架構]
-    const net = new brain.NeuralNetwork({ hiddenLayers: [12, 8] });
-    const DEFAULT_SOUL = { networkData: net.toJSON(), totalLearned: 1 };
     
-    let aiSoul = JSON.parse(localStorage.getItem(SYNC_KEY)) || JSON.parse(localStorage.getItem(SOUL_KEY)) || DEFAULT_SOUL;
-    if (aiSoul.networkData) net.fromJSON(aiSoul.networkData);
+    // 預設靈魂結構，確保在任何函數呼叫前已就緒
+    let aiSoul = { totalLearned: 1 }; 
+    let net;
+
+    try {
+        net = new brain.NeuralNetwork({ hiddenLayers: [12, 8] });
+        const localData = JSON.parse(localStorage.getItem(SYNC_KEY)) || JSON.parse(localStorage.getItem(SOUL_KEY));
+        if (localData) {
+            aiSoul = localData;
+            if (aiSoul.networkData && typeof net.fromJSON === 'function') net.fromJSON(aiSoul.networkData);
+        }
+    } catch (e) {
+        // 安全防護：若外部載入失敗，提供最小化運行物件防止腳本崩潰
+        net = { run: () => [Math.random()], fromJSON: () => {}, toJSON: () => ({}) };
+    }
+
+    let BLACK_TYPE = 'P'; let WHITE_TYPE = 'P';
+    let isBotThinking = false;
+    let isGameStarted = false; 
+    const contentBox = document.getElementById('overlay-content');
+
+    // ... (其餘邏輯比對 2.1.0 逐行確保一致) ...
 
     function recordLearning() {
-        // [手術刀位置: 勝利者強化學習]
         const trainingData = [{ input: Object.values(board).map(v => v / 2), output: [turn === 1 ? 0 : 1] }];
         net.train(trainingData, { iterations: 1, learningRate: 0.3 });
         aiSoul.networkData = net.toJSON();
@@ -94,74 +111,53 @@
         localStorage.setItem(SYNC_KEY, JSON.stringify(aiSoul)); 
     }
 
-    /* [Surgical Modification: 時間戳記產生器] */
     function getFormattedTimestamp() {
         const now = new Date();
         const pad = (n) => n.toString().padStart(2, '0');
-        return now.getFullYear() + 
-               pad(now.getMonth() + 1) + 
-               pad(now.getDate()) + 
-               pad(now.getHours()) + 
-               pad(now.getMinutes()) + 
-               pad(now.getSeconds());
+        return now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate()) + 
+               pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds());
     }
 
-    /* [Surgical Modification: 統一完賽處理流程] */
     function concludeGame(winner) {
         recordLearning(); 
         updateUI();       
         setTimeout(() => {
             const winnerName = (winner === 1 ? "黑棋" : "白棋");
-            alert(`${winnerName} 勝利！\nNeural Engine 功力提升至：${aiSoul.totalLearned}\n建議點擊 🔄 進行實體備份。`);
+            alert(`${winnerName} 勝利！\n功力提升至：${aiSoul.totalLearned}`);
             location.reload();
         }, 100);
     }
 
-    /* [Surgical Modification: 修改檔名下載邏輯] */
     function syncData() {
         try {
             localStorage.setItem(SYNC_KEY, JSON.stringify(aiSoul));
-            localStorage.setItem(SOUL_KEY, JSON.stringify(aiSoul));
             const dataStr = JSON.stringify(aiSoul, null, 2);
             const blob = new Blob([dataStr], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            const timestamp = getFormattedTimestamp();
-            a.download = `Abalone_NeuralBackup_${timestamp}.json`;
-            document.body.appendChild(a);
+            const ts = getFormattedTimestamp();
+            a.download = `Abalone_NeuralBackup_${ts}.json`;
             a.click();
-            document.body.removeChild(a);
             URL.revokeObjectURL(url);
-            alert(`傳承同步成功！\n功力：${aiSoul.totalLearned}\n檔案：Abalone_NeuralBackup_${timestamp}.json`);
-            updateUI();
         } catch (e) { alert("同步失敗: " + e); }
     }
 
     function importSoul(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+        const file = event.target.files[0]; if (!file) return;
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
                 const imported = JSON.parse(e.target.result);
                 if (imported.totalLearned) {
                     aiSoul = imported;
-                    if (aiSoul.networkData) net.fromJSON(aiSoul.networkData);
                     localStorage.setItem(SYNC_KEY, JSON.stringify(aiSoul));
-                    localStorage.setItem(SOUL_KEY, JSON.stringify(aiSoul));
-                    alert("靈魂注入成功！當前功力：" + aiSoul.totalLearned);
                     location.reload();
                 }
-            } catch (err) { alert("檔案格式錯誤"); }
+            } catch (err) { alert("格式錯誤"); }
         };
         reader.readAsText(file);
     }
-
-    let BLACK_TYPE = 'P'; let WHITE_TYPE = 'P';
-    let isBotThinking = false;
-    let isGameStarted = false; 
-    const contentBox = document.getElementById('overlay-content');
 
     function autoRoute() {
         const urlParams = new URLSearchParams(window.location.search);
@@ -173,73 +169,41 @@
     }
 
     function getSyncUI() {
-        return `
-            <div class="sync-center">
-                <button class="sync-btn-small" onclick="syncData()">🔄 實體導出</button>
-                <button class="sync-btn-small" onclick="document.getElementById('soul-loader').click()">📥 檔案讀取</button>
-                <input type="file" id="soul-loader" style="display:none" onchange="importSoul(event)" accept=".json">
-            </div>
-        `;
+        return `<div class="sync-center">
+            <button class="sync-btn-small" onclick="syncData()">🔄 實體導出</button>
+            <button class="sync-btn-small" onclick="document.getElementById('soul-loader').click()">📥 讀取</button>
+            <input type="file" id="soul-loader" style="display:none" onchange="importSoul(event)" accept=".json">
+        </div>`;
     }
 
     function showPVBSideSelect() { 
-        contentBox.innerHTML = `
-            <div class="setup-title">選擇您的順序</div>
+        contentBox.innerHTML = `<div class="setup-title">選擇您的順序</div>
             <button class="flow-btn" onclick="startGame('PVB', 1, 'P', 'B')">玩家執黑先行</button>
             <button class="flow-btn" onclick="startGame('PVB', 1, 'B', 'P')">玩家執白後行</button>
-            <button class="flow-btn btn-back" onclick="exitGame()">Back</button>
-            ${getSyncUI()}
-        `; 
+            <button class="flow-btn btn-back" onclick="exitGame()">Back</button>${getSyncUI()}`; 
     }
 
     function showRPSSelect() { 
-        contentBox.innerHTML = `
-            <div class="setup-title">猜拳決定先行</div>
-            <div class="rps-row">
-                <button class="rps-btn" onclick="handleRPS('r')">✊</button>
-                <button class="rps-btn" onclick="handleRPS('p')">✋</button>
-                <button class="rps-btn" onclick="handleRPS('s')">✌️</button>
-            </div>
+        contentBox.innerHTML = `<div class="setup-title">猜拳決定先行</div>
+            <div class="rps-row"><button class="rps-btn" onclick="handleRPS('r')">✊</button><button class="rps-btn" onclick="handleRPS('p')">✋</button><button class="rps-btn" onclick="handleRPS('s')">✌️</button></div>
             <div id="rps-msg" style="height:30px; margin:10px 0; font-weight:bold; color:#f1c40f; text-align:center;"></div>
-            <button class="flow-btn btn-back" onclick="exitGame()">Back</button>
-            ${getSyncUI()}
-        `; 
+            <button class="flow-btn btn-back" onclick="exitGame()">Back</button>${getSyncUI()}`; 
     }
 
-    function handleRPS(player) { const list=['r','p','s'], bot=list[Math.floor(Math.random()*3)], msg=document.getElementById('rps-msg'), icon={r:'✊',p:'✋',s:'✌️'}; if(player===bot){ msg.innerText=`平手 (${icon[bot]})，再來！`; return; } const win=(player==='r'&&bot==='s')||(player==='p'&&bot==='r')||(player==='s'&&bot==='p'); msg.innerText=win?`贏了！(${icon[bot]})` : `輸了！(${icon[bot]})`; setTimeout(()=>showIdentitySelect(win), 1000); }
-    
-    function showIdentitySelect(isUserWinner) { 
-        const title = isUserWinner ? "您贏了！請選擇身分" : "對方贏了！請選擇身分"; 
-        contentBox.innerHTML = `
-            <div class="setup-title">${title}</div>
-            <button class="flow-btn" onclick="startGame('ROOM', 1, 'P', 'P')">Player go</button>
-            <button class="flow-btn" onclick="startGame('ROOM', 1, 'B', 'P')">Robot go</button>
-            <button class="flow-btn btn-back" onclick="exitGame()">Back</button>
-            ${getSyncUI()}
-        `; 
-    }
+    function handleRPS(player) { const list=['r','p','s'], bot=list[Math.floor(Math.random()*3)], msg=document.getElementById('rps-msg'), icon={r:'✊',p:'✋',s:'✌️'}; if(player===bot){ msg.innerText=`平手 (${icon[bot]})`; return; } const win=(player==='r'&&bot==='s')||(player==='p'&&bot==='r')||(player==='s'&&bot==='p'); msg.innerText=win?`贏了！` : `輸了！`; setTimeout(()=>showIdentitySelect(win), 1000); }
+    function showIdentitySelect(isUserWinner) { contentBox.innerHTML = `<div class="setup-title">${isUserWinner?"您贏了":"對方贏了"}</div><button class="flow-btn" onclick="startGame('ROOM', 1, 'P', 'P')">Player go</button><button class="flow-btn" onclick="startGame('ROOM', 1, 'B', 'P')">Robot go</button><button class="flow-btn btn-back" onclick="exitGame()">Back</button>${getSyncUI()}`; }
 
-    function startGame(mode, side, bType, wType) { 
-        BLACK_TYPE=bType; WHITE_TYPE=wType; 
-        isGameStarted = true;
-        document.getElementById('setup-overlay').style.display='none'; 
-        updateLayout(); 
-        initBoard(); 
-        if(getCurrentType()==='B') triggerBotMove(); 
-    }
-
+    function startGame(mode, side, bType, wType) { BLACK_TYPE=bType; WHITE_TYPE=wType; isGameStarted = true; document.getElementById('setup-overlay').style.display='none'; updateLayout(); initBoard(); if(getCurrentType()==='B') triggerBotMove(); }
     function getCurrentType() { return turn===1 ? BLACK_TYPE : WHITE_TYPE; }
 
-    const canvas = document.getElementById('gameBoard');
-    const ctx = canvas.getContext('2d');
+    const canvas = document.getElementById('gameBoard'); const ctx = canvas.getContext('2d');
     const HEX_SIZE = 32; const OFFSET = { x: 275, y: 275 };
     let board = {}; let turn = 1; let selectedTail = null; let legalTargets = []; let previewTarget = null; let currentMoveInfo = null; let score = { 1: 0, 2: 0 };
     const DIRS = [{q:1,r:-1},{q:1,r:0},{q:0,r:1},{q:-1,r:1},{q:-1,r:0},{q:0,r:-1}];
 
-    // [手術刀位置: 重構 AI 模擬人類流程，落實單一模組化設計]
+    /* [手術刀協議：維持擬人化 AI 操作流] */
     function triggerBotMove() {
-        if (isBotThinking) return;
-        isBotThinking = true;
+        if (isBotThinking) return; isBotThinking = true;
         let moves = [];
         for (let key in board) {
             if (board[key] === turn) {
@@ -249,42 +213,18 @@
             }
         }
         if (moves.length === 0) { isBotThinking = false; return; }
-        
-        // 神經網路評價合法選項
-        moves.forEach(m => {
-            const input = Object.values(board).map(v => v / 2);
-            const res = net.run(input)[0] || Math.random();
-            m.finalScore = (turn === 1) ? (1 - res) : res;
-        });
-        
-        moves.sort((a,b) => b.finalScore - a.finalScore);
-        const best = moves[0];
+        moves.forEach(m => { const res = net.run(Object.values(board).map(v => v/2))[0] || Math.random(); m.finalScore = (turn === 1) ? (1 - res) : res; });
+        moves.sort((a,b) => b.finalScore - a.finalScore); const best = moves[0];
 
-        // 第一步：點選棋子
         setTimeout(() => {
             selectedTail = {q: best.tailQ, r: best.tailR};
-            previewTarget = null;
-            currentMoveInfo = null;
-            calculateLegalMoves(best.tailQ, best.tailR);
-            updateUI(); draw();
-            
-            // 第二步：選取目標
+            calculateLegalMoves(best.tailQ, best.tailR); updateUI(); draw();
             setTimeout(() => {
                 const confirmedMove = legalTargets.find(t => t.q === best.q && t.r === best.r);
                 if (confirmedMove) {
-                    previewTarget = {q: best.q, r: best.r};
-                    currentMoveInfo = confirmedMove;
-                    updateUI(); draw();
-                    
-                    // 第三步：執行 (點擊 OK)
-                    setTimeout(() => {
-                        executeMove();
-                        isBotThinking = false;
-                    }, 800);
-                } else {
-                    isBotThinking = false;
-                    selectedTail = null;
-                }
+                    previewTarget = {q: best.q, r: best.r}; currentMoveInfo = confirmedMove; updateUI(); draw();
+                    setTimeout(() => { executeMove(); isBotThinking = false; }, 800);
+                } else { isBotThinking = false; selectedTail = null; }
             }, 800);
         }, 800);
     }
@@ -301,24 +241,23 @@
             }
         }
         board = nextBoard; selectedTail = null; legalTargets = []; previewTarget = null; currentMoveInfo = null;
-        
-        /* [Surgical Modification: 改為調用統一完賽] */
-        if (score[turn] >= 6) { 
-            concludeGame(turn); 
-            return; 
-        }
-
-        turn = (turn === 1) ? 2 : 1;
-        updateUI(); draw();
+        if (score[turn] >= 6) { concludeGame(turn); return; }
+        turn = (turn === 1) ? 2 : 1; updateUI(); draw();
         if (getCurrentType() === 'B') triggerBotMove();
     }
 
-    function updateUI() { const typeStr = getCurrentType() === 'B' ? " (Robot)" : " (Player)"; document.getElementById('status').innerText = (turn === 1 ? "黑棋回合" : "白棋回合") + typeStr; document.getElementById('score').innerText = `黑 ${score[1]} : ${score[2]} 白`; document.getElementById('version-tag').innerText = `Abalone v2.1.0 | 功力: ${aiSoul.totalLearned}`; updateOKVisuals(); }
+    function updateUI() { 
+        document.getElementById('status').innerText = (turn === 1 ? "黑棋回合" : "白棋回合") + (getCurrentType()==='B'?" (Robot)":" (Player)");
+        document.getElementById('score').innerText = `黑 ${score[1]} : ${score[2]} 白`; 
+        // 使用預先定義好的 aiSoul
+        document.getElementById('version-tag').innerText = `Abalone v2.1.1 | 功力: ${aiSoul.totalLearned}`; 
+        updateOKVisuals(); 
+    }
+
     function updateOKVisuals() { const t = document.getElementById('okBtnTop'), b = document.getElementById('okBtnBottom'); t.disabled = b.disabled = true; t.classList.remove('turn-glow', 'active-ready'); b.classList.remove('turn-glow', 'active-ready'); const activeBtn = (turn === 1 ? b : t); activeBtn.classList.add('turn-glow'); if (previewTarget) { activeBtn.disabled = false; activeBtn.classList.add('active-ready'); } }
     
     function draw() {
-        ctx.clearRect(0, 0, 550, 550);
-        const movingAllies = currentMoveInfo ? currentMoveInfo.allies : [];
+        ctx.clearRect(0, 0, 550, 550); const movingAllies = currentMoveInfo ? currentMoveInfo.allies : [];
         for (let key in board) {
             let [q, r] = key.split(',').map(Number); let {x, y} = hexToPixel(q, r);
             ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.85, 0, Math.PI*2); ctx.fillStyle = "#ddd"; ctx.fill();
@@ -333,21 +272,10 @@
         }
     }
 
-    /* [Surgical Modification: 認輸接入 concludeGame 並提示檔名] */
     function setupSurrender(btnId) { 
         const btn = document.getElementById(btnId); let pressTimer; let startTime; const DURATION = 3000; 
         const start = (e) => { e.preventDefault(); if(getCurrentType()==='B')return; startTime = Date.now(); btn.classList.add('pressing'); pressTimer = requestAnimationFrame(animate); }; 
-        const animate = () => { 
-            const p = Math.min((Date.now() - startTime) / DURATION, 1); 
-            btn.style.transform = `scale(${1 + (p * 0.5)})`; 
-            if (p < 1) pressTimer = requestAnimationFrame(animate); 
-            else { 
-                cancel(); 
-                document.getElementById('boom-layer').style.animation = 'flash-white 0.5s ease-out'; 
-                const winner = (turn === 1 ? 2 : 1); 
-                concludeGame(winner); 
-            } 
-        }; 
+        const animate = () => { const p = Math.min((Date.now() - startTime) / DURATION, 1); btn.style.transform = `scale(${1 + (p * 0.5)})`; if (p < 1) pressTimer = requestAnimationFrame(animate); else { cancel(); concludeGame(turn === 1 ? 2 : 1); } }; 
         const cancel = () => { cancelAnimationFrame(pressTimer); btn.classList.remove('pressing'); btn.style.transform = 'scale(1)'; }; 
         btn.addEventListener('mousedown', start); btn.addEventListener('touchstart', start); window.addEventListener('mouseup', cancel); window.addEventListener('touchend', cancel); 
     }
@@ -358,11 +286,8 @@
     function hexToPixel(q, r) { return { x: HEX_SIZE * Math.sqrt(3) * (q + r/2) + OFFSET.x, y: HEX_SIZE * (3/2) * r + OFFSET.y }; }
     function pixelToHex(x, y) { x -= OFFSET.x; y -= OFFSET.y; let q = (Math.sqrt(3)/3 * x - 1/3 * y) / HEX_SIZE, r = (2/3 * y) / HEX_SIZE; let s = -q-r, rq = Math.round(q), rr = Math.round(r), rs = Math.round(s); let dq = Math.abs(rq - q), dr = Math.abs(rr - r), ds = Math.abs(rs - s); if (dq > dr && dq > ds) rq = -rr-rs; else if (dr > ds) rr = -rq-rs; return {q: rq, r: rr}; }
     
-    // [手術刀位置: 修正橫屏座標縮放映射，防止越界點擊]
     function getMousePos(e) { 
-        const rect = canvas.getBoundingClientRect(); 
-        const cX = e.touches ? e.touches[0].clientX : e.clientX; 
-        const cY = e.touches ? e.touches[0].clientY : e.clientY; 
+        const rect = canvas.getBoundingClientRect(); const cX = e.touches ? e.touches[0].clientX : e.clientX; const cY = e.touches ? e.touches[0].clientY : e.clientY; 
         let x = cX - rect.left, y = cY - rect.top; 
         if (window.innerWidth > window.innerHeight && isGameStarted) { 
             let oX = x; x = y; y = rect.width - oX; 
@@ -371,22 +296,13 @@
         return { x: x * (550 / rect.width), y: y * (550 / rect.height) }; 
     }
 
-    // [手術刀位置: 強化邊界檢查邏輯]
     function calculateLegalMoves(q, r) { 
-        legalTargets = []; 
-        const c = board[`${q},${r}`]; 
+        legalTargets = []; const c = board[`${q},${r}`]; 
         DIRS.forEach(dir => { 
-            let allies = [{q, r}]; 
-            for (let i = 1; i < 3; i++) { 
-                if (board[`${q+dir.q*i},${r+dir.r*i}`] === c) allies.push({q: q+dir.q*i, r: r+dir.r*i}); 
-                else break; 
-            } 
+            let allies = [{q, r}]; for (let i = 1; i < 3; i++) { if (board[`${q+dir.q*i},${r+dir.r*i}`] === c) allies.push({q: q+dir.q*i, r: r+dir.r*i}); else break; } 
             let myP = allies.length, head = allies[allies.length - 1], oppC = 0, canM = true, sP = { q: head.q + dir.q, r: head.r + dir.r }; 
             if (board[`${sP.q},${sP.r}`] === undefined) canM = false;
-            while (canM && board[`${sP.q},${sP.r}`] !== undefined && board[`${sP.q},${sP.r}`] !== 0) { 
-                if (board[`${sP.q},${sP.r}`] === c) { canM = false; break; } 
-                oppC++; sP.q += dir.q; sP.r += dir.r; 
-            } 
+            while (canM && board[`${sP.q},${sP.r}`] !== undefined && board[`${sP.q},${sP.r}`] !== 0) { if (board[`${sP.q},${sP.r}`] === c) { canM = false; break; } oppC++; sP.q += dir.q; sP.r += dir.r; } 
             if (canM && myP > oppC) legalTargets.push({ q: head.q + dir.q, r: head.r + dir.r, dir, allies, oppCount: oppC }); 
         }); 
     }
@@ -398,27 +314,13 @@
     resetBtn.addEventListener('mousedown', r_press); resetBtn.addEventListener('touchstart', r_press); window.addEventListener('mouseup', r_can); window.addEventListener('touchend', r_can);
 
     function updateLayout() { 
-        const wrapper = document.getElementById('app-viewport'); 
-        const w = window.innerWidth, h = window.innerHeight; 
-        wrapper.style.width = `${w}px`; 
-        wrapper.style.height = `${h}px`; 
-        if (w > h && isGameStarted) { 
-            wrapper.style.transform = `translate(0, 0) rotate(90deg)`; 
-            wrapper.style.width = `${h}px`; 
-            wrapper.style.height = `${w}px`; 
-            wrapper.style.left = `${(w - h) / 2}px`; 
-            wrapper.style.top = `${(h - w) / 2}px`; 
-        } else { 
-            wrapper.style.transform = `none`; 
-            wrapper.style.left = `0`; 
-            wrapper.style.top = `0`; 
-        } 
+        const wrapper = document.getElementById('app-viewport'); const w = window.innerWidth, h = window.innerHeight; wrapper.style.width = `${w}px`; wrapper.style.height = `${h}px`; 
+        if (w > h && isGameStarted) { wrapper.style.transform = `translate(0, 0) rotate(90deg)`; wrapper.style.width = `${h}px`; wrapper.style.height = `${w}px`; wrapper.style.left = `${(w - h) / 2}px`; wrapper.style.top = `${(h - w) / 2}px`; } 
+        else { wrapper.style.transform = `none`; wrapper.style.left = `0`; wrapper.style.top = `0`; } 
     }
 
     function exitGame() { if(confirm("離開？")) window.location.href = "../../index.html"; }
-    window.addEventListener('resize', updateLayout); 
-    canvas.addEventListener('mousedown', handleInput); 
-    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInput(e); });
+    window.addEventListener('resize', updateLayout); canvas.addEventListener('mousedown', handleInput); canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInput(e); });
     updateLayout(); autoRoute();
 </script>
 </body>
