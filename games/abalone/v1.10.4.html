@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>智推棋 Abalone - v1.10.4</title>
     <style>
-        /* [Checksum: v1.10.3 樣式對齊] */
+        /* [Checksum: 100% Match v1.10.3 樣式] */
         * { -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; box-sizing: border-box; }
         html, body { overscroll-behavior: none; height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; background: #2c3e50; font-family: sans-serif; }
         #app-viewport { position: fixed; top: 0; left: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.3s ease; transform-origin: center center; overflow: hidden; }
@@ -30,7 +30,6 @@
         @keyframes surrender-shake { 0% { transform: translate(0,0); } 25% { transform: translate(2px, 2px); } 50% { transform: translate(-2px, -2px); } 75% { transform: translate(2px, -2px); } 100% { transform: translate(0,0); } }
         .explosion-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0; pointer-events: none; z-index: 1000; }
         @keyframes flash-white { 0% { opacity: 0; } 10% { opacity: 1; } 100% { opacity: 0; } }
-
         #setup-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 500; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .setup-card { width: 80%; max-width: 280px; display: flex; flex-direction: column; align-items: center; }
         .setup-title { font-size: 1.25rem; margin-bottom: 30px; color: #fff; font-weight: 800; text-align: center; width: 100%; }
@@ -46,7 +45,6 @@
 <div id="app-viewport">
     <div id="boom-layer" class="explosion-overlay"></div>
     <div id="setup-overlay"><div class="setup-card" id="overlay-content"></div></div>
-
     <div class="top-bar">
         <div class="reset-wrapper">
             <svg><circle class="circle-bg" cx="25" cy="25" r="20"/><circle id="progressCircle" class="circle-progress" cx="25" cy="25" r="20"/></svg>
@@ -58,7 +56,6 @@
         </div>
         <button class="exit-btn" onclick="exitGame()">EXIT</button>
     </div>
-
     <div class="game-container">
         <div class="control-row">
             <button id="okBtnTop" class="ok-btn" disabled onclick="executeMove()">OK</button>
@@ -79,15 +76,15 @@
     const DEFAULT_SOUL = { weights: { center: 0.5, attack: 0.5, defense: 0.5, grouping: 0.5 }, totalLearned: 1 };
     let aiSoul = JSON.parse(localStorage.getItem(SOUL_KEY)) || DEFAULT_SOUL;
 
-    let BLACK_TYPE = 'P'; let WHITE_TYPE = 'P';
-    let isBotThinking = false; let rpsWinnerSide = 1; 
-    const contentBox = document.getElementById('overlay-content');
-
-    // --- [手術位置：新增學習紀錄函數] ---
+    // 手術刀新增：全域學習記錄函數
     function recordLearning() {
         aiSoul.totalLearned++;
         localStorage.setItem(SOUL_KEY, JSON.stringify(aiSoul));
     }
+
+    let BLACK_TYPE = 'P'; let WHITE_TYPE = 'P';
+    let isBotThinking = false; 
+    const contentBox = document.getElementById('overlay-content');
 
     function autoRoute() {
         const urlParams = new URLSearchParams(window.location.search);
@@ -98,57 +95,11 @@
         else startGame('PVP', 1, 'P', 'P');
     }
 
-    function showPVBSideSelect() {
-        contentBox.innerHTML = `
-            <div class="setup-title">選擇您的順序</div>
-            <button class="flow-btn" onclick="startGame('PVB', 1, 'P', 'B')">玩家執黑先行</button>
-            <button class="flow-btn" onclick="startGame('PVB', 1, 'B', 'P')">玩家執白後行</button>
-            <button class="flow-btn btn-back" onclick="exitGame()">Back</button>
-        `;
-    }
-
-    function showRPSSelect() {
-        contentBox.innerHTML = `
-            <div class="setup-title">猜拳決定先行</div>
-            <div class="rps-row">
-                <button class="rps-btn" onclick="handleRPS('r')">✊</button>
-                <button class="rps-btn" onclick="handleRPS('p')">✋</button>
-                <button class="rps-btn" onclick="handleRPS('s')">✌️</button>
-            </div>
-            <div id="rps-msg" style="height:30px; margin:10px 0; font-weight:bold; color:#f1c40f; text-align:center;"></div>
-            <button class="flow-btn btn-back" onclick="exitGame()">Back</button>
-        `;
-    }
-
-    function handleRPS(player) {
-        const list=['r','p','s'], bot=list[Math.floor(Math.random()*3)], msg=document.getElementById('rps-msg'), icon={r:'✊',p:'✋',s:'✌️'};
-        if(player===bot){ msg.innerText=`平手 (${icon[bot]})，再來！`; return; }
-        const win=(player==='r'&&bot==='s')||(player==='p'&&bot==='r')||(player==='s'&&bot==='p');
-        msg.innerText=win?`贏了！(${icon[bot]})` : `輸了！(${icon[bot]})`;
-        rpsWinnerSide = win?1:2; setTimeout(()=>showIdentitySelect(win), 1000);
-    }
-
-    function showIdentitySelect(isUserWinner) {
-        const title = isUserWinner ? "您贏了！請選擇身分" : "對方贏了！請選擇身分";
-        contentBox.innerHTML = `
-            <div class="setup-title">${title}</div>
-            <button class="flow-btn" onclick="finalRoomStart('P')">Player go</button>
-            <button class="flow-btn" onclick="finalRoomStart('B')">Robot go</button>
-            <button class="flow-btn btn-back" onclick="exitGame()">Back</button>
-        `;
-    }
-
-    function finalRoomStart(type) {
-        if(rpsWinnerSide===1) startGame('ROOM', 1, type, 'P');
-        else startGame('ROOM', 1, 'P', type);
-    }
-
-    function startGame(mode, side, bType, wType) {
-        BLACK_TYPE=bType; WHITE_TYPE=wType;
-        document.getElementById('setup-overlay').style.display='none';
-        initBoard(); if(getCurrentType()==='B') triggerBotMove();
-    }
-
+    function showPVBSideSelect() { contentBox.innerHTML = `<div class="setup-title">選擇您的順序</div><button class="flow-btn" onclick="startGame('PVB', 1, 'P', 'B')">玩家執黑先行</button><button class="flow-btn" onclick="startGame('PVB', 1, 'B', 'P')">玩家執白後行</button><button class="flow-btn btn-back" onclick="exitGame()">Back</button>`; }
+    function showRPSSelect() { contentBox.innerHTML = `<div class="setup-title">猜拳決定先行</div><div class="rps-row"><button class="rps-btn" onclick="handleRPS('r')">✊</button><button class="rps-btn" onclick="handleRPS('p')">✋</button><button class="rps-btn" onclick="handleRPS('s')">✌️</button></div><div id="rps-msg" style="height:30px; margin:10px 0; font-weight:bold; color:#f1c40f; text-align:center;"></div><button class="flow-btn btn-back" onclick="exitGame()">Back</button>`; }
+    function handleRPS(player) { const list=['r','p','s'], bot=list[Math.floor(Math.random()*3)], msg=document.getElementById('rps-msg'), icon={r:'✊',p:'✋',s:'✌️'}; if(player===bot){ msg.innerText=`平手 (${icon[bot]})，再來！`; return; } const win=(player==='r'&&bot==='s')||(player==='p'&&bot==='r')||(player==='s'&&bot==='p'); msg.innerText=win?`贏了！(${icon[bot]})` : `輸了！(${icon[bot]})`; setTimeout(()=>showIdentitySelect(win), 1000); }
+    function showIdentitySelect(isUserWinner) { const title = isUserWinner ? "您贏了！請選擇身分" : "對方贏了！請選擇身分"; contentBox.innerHTML = `<div class="setup-title">${title}</div><button class="flow-btn" onclick="startGame('ROOM', 1, 'P', 'P')">Player go</button><button class="flow-btn" onclick="startGame('ROOM', 1, 'B', 'P')">Robot go</button><button class="flow-btn btn-back" onclick="exitGame()">Back</button>`; }
+    function startGame(mode, side, bType, wType) { BLACK_TYPE=bType; WHITE_TYPE=wType; document.getElementById('setup-overlay').style.display='none'; initBoard(); if(getCurrentType()==='B') triggerBotMove(); }
     function getCurrentType() { return turn===1 ? BLACK_TYPE : WHITE_TYPE; }
 
     const canvas = document.getElementById('gameBoard');
@@ -158,38 +109,46 @@
     const DIRS = [{q:1,r:-1},{q:1,r:0},{q:0,r:1},{q:-1,r:1},{q:-1,r:0},{q:0,r:-1}];
 
     function triggerBotMove() {
-        if (isBotThinking) return; isBotThinking = true;
-        selectedTail = null; legalTargets = []; previewTarget = null; currentMoveInfo = null;
-        setTimeout(() => {
-            let moves = [];
-            for (let key in board) {
-                if (board[key] === turn) {
-                    let [q, r] = key.split(',').map(Number);
-                    calculateLegalMoves(q, r);
-                    legalTargets.forEach(t => moves.push({ ...t, tailQ: q, tailR: r }));
-                }
+        if (isBotThinking) return;
+        isBotThinking = true;
+        let moves = [];
+        for (let key in board) {
+            if (board[key] === turn) {
+                let [q, r] = key.split(',').map(Number);
+                calculateLegalMoves(q, r);
+                legalTargets.forEach(t => moves.push({ ...t, tailQ: q, tailR: r }));
             }
-            legalTargets = []; 
-            if (moves.length === 0) { isBotThinking = false; return; }
-            moves.forEach(m => {
-                let s = Math.random();
-                if (m.oppCount > 0) s += 100 * aiSoul.weights.attack;
-                let dist = Math.abs(m.q) + Math.abs(m.r) + Math.abs(-m.q-m.r);
-                s += (10 - dist) * aiSoul.weights.center;
-                m.finalScore = s;
-            });
-            moves.sort((a,b) => b.finalScore - a.finalScore);
-            const best = moves[0];
-            selectedTail = {q: best.tailQ, r: best.tailR}; 
-            currentMoveInfo = best; 
-            previewTarget = {q: best.q, r: best.r};
-            draw();
-            setTimeout(() => { executeMove(); isBotThinking = false; }, 3000);
-        }, 1000);
+        }
+        if (moves.length === 0) { isBotThinking = false; return; }
+        moves.forEach(m => {
+            let s = Math.random();
+            if (m.oppCount > 0) s += 100 * aiSoul.weights.attack;
+            let dist = Math.abs(m.q) + Math.abs(m.r) + Math.abs(-m.q-m.r);
+            s += (10 - dist) * aiSoul.weights.center;
+            m.finalScore = s;
+        });
+        moves.sort((a,b) => b.finalScore - a.finalScore);
+        const best = moves[0];
+
+        setTimeout(() => {
+            selectedTail = {q: best.tailQ, r: best.tailR};
+            calculateLegalMoves(best.tailQ, best.tailR);
+            updateUI(); draw();
+            setTimeout(() => {
+                previewTarget = {q: best.q, r: best.r};
+                currentMoveInfo = best;
+                updateUI(); draw();
+                setTimeout(() => {
+                    executeMove();
+                    isBotThinking = false;
+                }, 800);
+            }, 800);
+        }, 800);
     }
 
     function executeMove() {
-        if (!currentMoveInfo) return; let nextBoard = {...board}; const moveInfo = currentMoveInfo;
+        if (!currentMoveInfo) return; 
+        let nextBoard = {...board}; const moveInfo = currentMoveInfo;
         moveInfo.allies.forEach(s => nextBoard[`${s.q},${s.r}`] = 0);
         moveInfo.allies.forEach(s => nextBoard[`${s.q + moveInfo.dir.q},${s.r + moveInfo.dir.r}`] = turn);
         if (moveInfo.oppCount > 0) {
@@ -199,37 +158,15 @@
             }
         }
         board = nextBoard; selectedTail = null; legalTargets = []; previewTarget = null; currentMoveInfo = null;
-        
-        // --- [手術位置：勝利時觸發學習紀錄] ---
-        if (score[turn] >= 6) { 
-            recordLearning();
-            alert(`${turn === 1 ? "黑棋" : "白棋"} 勝利！`); 
-            location.reload(); 
-            return; 
-        }
-
+        // 手術刀：對齊 recordLearning 函數
+        if (score[turn] >= 6) { recordLearning(); alert(`${turn === 1 ? "黑棋" : "白棋"} 勝利！`); location.reload(); return; }
         turn = (turn === 1) ? 2 : 1;
         updateUI(); draw();
         if (getCurrentType() === 'B') triggerBotMove();
     }
 
-    function updateUI() {
-        const typeStr = getCurrentType() === 'B' ? " (Robot)" : " (Player)";
-        document.getElementById('status').innerText = (turn === 1 ? "黑棋回合" : "白棋回合") + typeStr;
-        document.getElementById('score').innerText = `黑 ${score[1]} : ${score[2]} 白`;
-        document.getElementById('version-tag').innerText = `Abalone v1.10.4 | 功力: ${aiSoul.totalLearned}`;
-        updateOKVisuals();
-    }
-
-    function updateOKVisuals() {
-        const t = document.getElementById('okBtnTop'), b = document.getElementById('okBtnBottom');
-        t.disabled = b.disabled = true; t.classList.remove('turn-glow', 'active-ready'); b.classList.remove('turn-glow', 'active-ready');
-        if (getCurrentType() === 'B') return;
-        const activeBtn = (turn === 1 ? b : t);
-        activeBtn.classList.add('turn-glow');
-        if (previewTarget) { activeBtn.disabled = false; activeBtn.classList.add('active-ready'); }
-    }
-
+    function updateUI() { const typeStr = getCurrentType() === 'B' ? " (Robot)" : " (Player)"; document.getElementById('status').innerText = (turn === 1 ? "黑棋回合" : "白棋回合") + typeStr; document.getElementById('score').innerText = `黑 ${score[1]} : ${score[2]} 白`; document.getElementById('version-tag').innerText = `Abalone v1.10.4 | 功力: ${aiSoul.totalLearned}`; updateOKVisuals(); }
+    function updateOKVisuals() { const t = document.getElementById('okBtnTop'), b = document.getElementById('okBtnBottom'); t.disabled = b.disabled = true; t.classList.remove('turn-glow', 'active-ready'); b.classList.remove('turn-glow', 'active-ready'); const activeBtn = (turn === 1 ? b : t); activeBtn.classList.add('turn-glow'); if (previewTarget) { activeBtn.disabled = false; activeBtn.classList.add('active-ready'); } }
     function draw() {
         ctx.clearRect(0, 0, 550, 550);
         const movingAllies = currentMoveInfo ? currentMoveInfo.allies : [];
@@ -238,109 +175,49 @@
             ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.85, 0, Math.PI*2); ctx.fillStyle = "#ddd"; ctx.fill();
             let val = board[key];
             if (val > 0) {
-                if (movingAllies.some(p => p.q === q && p.r === r)) {
-                    ctx.save(); ctx.shadowBlur = 15; ctx.shadowColor = "#00d2ff";
-                    ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.75, 0, Math.PI*2);
-                    ctx.strokeStyle = "rgba(0, 210, 255, 0.9)"; ctx.lineWidth = 4; ctx.stroke(); ctx.restore();
-                }
+                if (movingAllies.some(p => p.q === q && p.r === r)) { ctx.save(); ctx.shadowBlur = 15; ctx.shadowColor = "#00d2ff"; ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.75, 0, Math.PI*2); ctx.strokeStyle = "rgba(0, 210, 255, 0.9)"; ctx.lineWidth = 4; ctx.stroke(); ctx.restore(); }
                 ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.7, 0, Math.PI*2); ctx.fillStyle = val === 1 ? "#333" : "#fff"; ctx.fill();
-                let isTail = selectedTail && selectedTail.q === q && selectedTail.r === r;
-                ctx.strokeStyle = isTail ? "#f1c40f" : "#000"; ctx.lineWidth = isTail ? 4 : 1; ctx.stroke();
+                let isTail = selectedTail && selectedTail.q === q && selectedTail.r === r; ctx.strokeStyle = isTail ? "#f1c40f" : "#000"; ctx.lineWidth = isTail ? 4 : 1; ctx.stroke();
             }
             if (legalTargets.some(t => t.q === q && t.r === r)) { ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.5, 0, Math.PI*2); ctx.strokeStyle = "#e74c3c"; ctx.lineWidth = 4; ctx.stroke(); }
             if (previewTarget && previewTarget.q === q && previewTarget.r === r) { ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.75, 0, Math.PI*2); ctx.strokeStyle = "#2ecc71"; ctx.lineWidth = 5; ctx.stroke(); }
         }
     }
 
-    function setupSurrender(btnId) {
-        const btn = document.getElementById(btnId);
-        let pressTimer; let startTime; const DURATION = 3000;
-        const start = (e) => { e.preventDefault(); if(getCurrentType()==='B')return; startTime = Date.now(); btn.classList.add('pressing'); pressTimer = requestAnimationFrame(animate); };
-        const animate = () => {
-            const p = Math.min((Date.now() - startTime) / DURATION, 1);
-            btn.style.transform = `scale(${1 + (p * 0.5)})`;
-            if (p < 1) pressTimer = requestAnimationFrame(animate); else { 
+    function setupSurrender(btnId) { 
+        const btn = document.getElementById(btnId); let pressTimer; let startTime; const DURATION = 3000; 
+        const start = (e) => { e.preventDefault(); if(getCurrentType()==='B')return; startTime = Date.now(); btn.classList.add('pressing'); pressTimer = requestAnimationFrame(animate); }; 
+        const animate = () => { 
+            const p = Math.min((Date.now() - startTime) / DURATION, 1); 
+            btn.style.transform = `scale(${1 + (p * 0.5)})`; 
+            if (p < 1) pressTimer = requestAnimationFrame(animate); 
+            else { 
                 cancel(); 
                 document.getElementById('boom-layer').style.animation = 'flash-white 0.5s ease-out'; 
-                
-                // --- [手術位置：認輸時使用統一學習函數] ---
+                // 手術刀：對齊 recordLearning 函數
                 recordLearning(); 
-                
                 setTimeout(() => location.reload(), 300); 
-            }
-        };
-        const cancel = () => { cancelAnimationFrame(pressTimer); btn.classList.remove('pressing'); btn.style.transform = 'scale(1)'; };
-        btn.addEventListener('mousedown', start); btn.addEventListener('touchstart', start);
-        window.addEventListener('mouseup', cancel); window.addEventListener('touchend', cancel);
+            } 
+        }; 
+        const cancel = () => { cancelAnimationFrame(pressTimer); btn.classList.remove('pressing'); btn.style.transform = 'scale(1)'; }; 
+        btn.addEventListener('mousedown', start); btn.addEventListener('touchstart', start); window.addEventListener('mouseup', cancel); window.addEventListener('touchend', cancel); 
     }
     setupSurrender('surBtnTop'); setupSurrender('surBtnBottom');
 
-    function handleInput(e) {
-        if (getCurrentType() === 'B') return;
-        const {x, y} = getMousePos(e); let {q, r} = pixelToHex(x, y);
-        if (board[`${q},${r}`] === undefined) return;
-        if (board[`${q},${r}`] === turn) { previewTarget = null; currentMoveInfo = null; selectedTail = {q, r}; calculateLegalMoves(q, r); }
-        else if (legalTargets.some(t => t.q === q && t.r === r)) { currentMoveInfo = legalTargets.find(t => t.q === q && t.r === r); previewTarget = {q, r}; }
-        updateOKVisuals(); draw();
-    }
-
-    function initBoard() {
-        for (let q = -4; q <= 4; q++) {
-            for (let r = -4; r <= 4; r++) {
-                if (Math.abs(q + r) <= 4) {
-                    let val = 0;
-                    if (r <= -3) val = 2; if (r == -2 && (q == 0 || q == 1 || q == 2)) val = 2;
-                    if (r >= 3) val = 1; if (r == 2 && (q == 0 || q == -1 || q == -2)) val = 1;
-                    board[`${q},${r}`] = val;
-                }
-            }
-        }
-        updateUI(); draw();
-    }
+    function handleInput(e) { if (isBotThinking) return; const {x, y} = getMousePos(e); let {q, r} = pixelToHex(x, y); if (board[`${q},${r}`] === undefined) return; if (board[`${q},${r}`] === turn) { previewTarget = null; currentMoveInfo = null; selectedTail = {q, r}; calculateLegalMoves(q, r); } else if (legalTargets.some(t => t.q === q && t.r === r)) { currentMoveInfo = legalTargets.find(t => t.q === q && t.r === r); previewTarget = {q, r}; } updateOKVisuals(); draw(); }
+    function initBoard() { for (let q = -4; q <= 4; q++) { for (let r = -4; r <= 4; r++) { if (Math.abs(q + r) <= 4) { let val = 0; if (r <= -3) val = 2; if (r == -2 && (q == 0 || q == 1 || q == 2)) val = 2; if (r >= 3) val = 1; if (r == 2 && (q == 0 || q == -1 || q == -2)) val = 1; board[`${q},${r}`] = val; } } } updateUI(); draw(); }
     function hexToPixel(q, r) { return { x: HEX_SIZE * Math.sqrt(3) * (q + r/2) + OFFSET.x, y: HEX_SIZE * (3/2) * r + OFFSET.y }; }
-    function pixelToHex(x, y) {
-        x -= OFFSET.x; y -= OFFSET.y; let q = (Math.sqrt(3)/3 * x - 1/3 * y) / HEX_SIZE, r = (2/3 * y) / HEX_SIZE;
-        let s = -q-r, rq = Math.round(q), rr = Math.round(r), rs = Math.round(s);
-        let dq = Math.abs(rq - q), dr = Math.abs(rr - r), ds = Math.abs(rs - s);
-        if (dq > dr && dq > ds) rq = -rr-rs; else if (dr > ds) rr = -rq-rs;
-        return {q: rq, r: rr};
-    }
-    function getMousePos(e) {
-        const rect = canvas.getBoundingClientRect(); const cX = e.touches ? e.touches[0].clientX : e.clientX; const cY = e.touches ? e.touches[0].clientY : e.clientY;
-        let x = cX - rect.left, y = cY - rect.top;
-        if (window.innerWidth > window.innerHeight) { let oX = x; x = y; y = rect.width - oX; }
-        return { x: x * (550 / rect.width), y: y * (550 / rect.width) };
-    }
-    function calculateLegalMoves(q, r) {
-        legalTargets = []; const c = board[`${q},${r}`];
-        DIRS.forEach(dir => {
-            let allies = [{q, r}]; for (let i = 1; i < 3; i++) { if (board[`${q+dir.q*i},${r+dir.r*i}`] === c) allies.push({q: q+dir.q*i, r: r+dir.r*i}); else break; }
-            let myP = allies.length, head = allies[allies.length - 1], oppC = 0, canM = true, sP = { q: head.q + dir.q, r: head.r + dir.r };
-            while (board[`${sP.q},${sP.r}`] !== undefined && board[`${sP.q},${sP.r}`] !== 0) { if (board[`${sP.q},${sP.r}`] === c) { canM = false; break; } oppC++; sP.q += dir.q; sP.r += dir.r; }
-            if (canM && myP > oppC) legalTargets.push({ q: head.q + dir.q, r: head.r + dir.r, dir, allies, oppCount: oppC });
-        });
-    }
-
-    const resetBtn = document.getElementById('resetBtn'); const progressCircle = document.getElementById('progressCircle');
-    let r_timer, r_start; const r_dur = 2000;
+    function pixelToHex(x, y) { x -= OFFSET.x; y -= OFFSET.y; let q = (Math.sqrt(3)/3 * x - 1/3 * y) / HEX_SIZE, r = (2/3 * y) / HEX_SIZE; let s = -q-r, rq = Math.round(q), rr = Math.round(r), rs = Math.round(s); let dq = Math.abs(rq - q), dr = Math.abs(rr - r), ds = Math.abs(rs - s); if (dq > dr && dq > ds) rq = -rr-rs; else if (dr > ds) rr = -rq-rs; return {q: rq, r: rr}; }
+    function getMousePos(e) { const rect = canvas.getBoundingClientRect(); const cX = e.touches ? e.touches[0].clientX : e.clientX; const cY = e.touches ? e.touches[0].clientY : e.clientY; let x = cX - rect.left, y = cY - rect.top; if (window.innerWidth > window.innerHeight) { let oX = x; x = y; y = rect.width - oX; } return { x: x * (550 / rect.width), y: y * (550 / rect.width) }; }
+    function calculateLegalMoves(q, r) { legalTargets = []; const c = board[`${q},${r}`]; DIRS.forEach(dir => { let allies = [{q, r}]; for (let i = 1; i < 3; i++) { if (board[`${q+dir.q*i},${r+dir.r*i}`] === c) allies.push({q: q+dir.q*i, r: r+dir.r*i}); else break; } let myP = allies.length, head = allies[allies.length - 1], oppC = 0, canM = true, sP = { q: head.q + dir.q, r: head.r + dir.r }; while (board[`${sP.q},${sP.r}`] !== undefined && board[`${sP.q},${sP.r}`] !== 0) { if (board[`${sP.q},${sP.r}`] === c) { canM = false; break; } oppC++; sP.q += dir.q; sP.r += dir.r; } if (canM && myP > oppC) legalTargets.push({ q: head.q + dir.q, r: head.r + dir.r, dir, allies, oppCount: oppC }); }); }
+    const resetBtn = document.getElementById('resetBtn'); const progressCircle = document.getElementById('progressCircle'); let r_timer, r_start; const r_dur = 2000;
     function r_press(e) { e.preventDefault(); r_start = Date.now(); r_timer = requestAnimationFrame(r_upd); }
-    function r_upd() {
-        const p = Math.min((Date.now() - r_start) / r_dur, 1); progressCircle.style.strokeDashoffset = 126 * (1 - p);
-        if (p < 1) r_timer = requestAnimationFrame(r_upd); else { if(confirm("重設？")) location.reload(); r_can(); }
-    }
+    function r_upd() { const p = Math.min((Date.now() - r_start) / r_dur, 1); progressCircle.style.strokeDashoffset = 126 * (1 - p); if (p < 1) r_timer = requestAnimationFrame(r_upd); else { if(confirm("重設？")) location.reload(); r_can(); } }
     function r_can() { cancelAnimationFrame(r_timer); progressCircle.style.strokeDashoffset = 126; }
-    resetBtn.addEventListener('mousedown', r_press); resetBtn.addEventListener('touchstart', r_press);
-    window.addEventListener('mouseup', r_can); window.addEventListener('touchend', r_can);
-
-    function updateLayout() {
-        const wrapper = document.getElementById('app-viewport'); const w = window.innerWidth, h = window.innerHeight;
-        wrapper.style.width = `${w}px`; wrapper.style.height = `${h}px`;
-        if (w > h) { wrapper.style.transform = `translate(0, 0) rotate(90deg)`; wrapper.style.width = `${h}px`; wrapper.style.height = `${w}px`; wrapper.style.left = `${(w - h) / 2}px`; wrapper.style.top = `${(h - w) / 2}px`; }
-        else { wrapper.style.transform = `none`; wrapper.style.left = `0`; wrapper.style.top = `0`; }
-    }
+    resetBtn.addEventListener('mousedown', r_press); resetBtn.addEventListener('touchstart', r_press); window.addEventListener('mouseup', r_can); window.addEventListener('touchend', r_can);
+    function updateLayout() { const wrapper = document.getElementById('app-viewport'); const w = window.innerWidth, h = window.innerHeight; wrapper.style.width = `${w}px`; wrapper.style.height = `${h}px`; if (w > h) { wrapper.style.transform = `translate(0, 0) rotate(90deg)`; wrapper.style.width = `${h}px`; wrapper.style.height = `${w}px`; wrapper.style.left = `${(w - h) / 2}px`; wrapper.style.top = `${(h - w) / 2}px`; } else { wrapper.style.transform = `none`; wrapper.style.left = `0`; wrapper.style.top = `0`; } }
     function exitGame() { if(confirm("離開？")) window.location.href = "../../index.html"; }
     window.addEventListener('resize', updateLayout); canvas.addEventListener('mousedown', handleInput); canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInput(e); });
-    
     updateLayout(); autoRoute();
 </script>
 </body>
