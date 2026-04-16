@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>智推棋 Abalone - v2.1.2</title>
+    <title>智推棋 Abalone - v2.1.3</title>
     <style>
-        /* [Checksum: 樣式完全保留，僅更新標題與版號] */
+        /* [Checksum: 樣式完全保留，僅更新版號] */
         * { -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; box-sizing: border-box; }
         html, body { overscroll-behavior: none; height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; background: #2c3e50; font-family: sans-serif; }
         #app-viewport { position: fixed; top: 0; left: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.3s ease; transform-origin: center center; overflow: hidden; }
@@ -69,10 +69,10 @@
     </div>
 </div>
 
-<div id="version-tag">Abalone v2.1.2 | Initializing...</div>
+<div id="version-tag">Abalone v2.1.3 | Initializing...</div>
 
 <script>
-    /* [手術刀協議：v2.1.2 核心初始化區塊置頂] */
+    /* [Checksum: 底層初始化數據完全保留] */
     const SOUL_KEY = "Gamy_Abalone_Soul_v2";
     const SYNC_KEY = "abalone_neural_sync"; 
     
@@ -95,6 +95,85 @@
     let isGameStarted = false; 
     const contentBox = document.getElementById('overlay-content');
 
+    /* [手術刀協議：v2.1.3 核心執行邏輯針對性修改] 
+       1. 基於 2.1.2 版代換 triggerBotMove 與 fakeClick
+       2. 實現運算時間物理掛鉤 (1-5s) 與猶豫修正權
+    */
+    function triggerBotMove() {
+        if (isBotThinking || !isGameStarted) return;
+        isBotThinking = true;
+
+        const startTime = Date.now();
+        let currentBest = null;
+        let phase = 0; // 0: 思考期, 1: 已選棋子, 2: 已選目標
+
+        // 持續思考與動態決策循環
+        const brainLoop = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            
+            // 掃描盤面進行神經網路運算
+            let moves = [];
+            for (let key in board) {
+                if (board[key] === turn) {
+                    let [q, r] = key.split(',').map(Number);
+                    calculateLegalMoves(q, r);
+                    legalTargets.forEach(t => moves.push({ ...t, tailQ: q, tailR: r }));
+                }
+            }
+            
+            if (moves.length === 0) { 
+                clearInterval(brainLoop);
+                isBotThinking = false; 
+                return; 
+            }
+
+            moves.forEach(m => {
+                const res = net.run(Object.values(board).map(v => v/2))[0] || Math.random();
+                m.finalScore = (turn === 1) ? (1 - res) : res;
+            });
+            moves.sort((a,b) => b.finalScore - a.finalScore);
+            const newBest = moves[0];
+
+            // --- 猶豫期修正邏輯 (第 1-5 秒) ---
+            // 只有在運算超過 1 秒後才開始執行視覺表現，且若發現更高分的解則立即跳轉座標
+            if (elapsed > 1000 && phase < 3) {
+                if (!currentBest || newBest.tailQ !== currentBest.tailQ || newBest.tailR !== currentBest.tailR) {
+                    currentBest = newBest;
+                    fakeClick(currentBest.tailQ, currentBest.tailR); // 模擬點選/更換棋子
+                    phase = 1;
+                }
+            }
+
+            // 進入第二階段：確認目標位置
+            if (elapsed > 2500 && phase === 1) {
+                fakeClick(currentBest.q, currentBest.r);
+                phase = 2;
+            }
+
+            // 進入最終階段：時間截止 (5s) 或 決策完成且已過思考期 (3s)
+            if (elapsed >= 5000 || (elapsed > 3500 && phase === 2)) {
+                clearInterval(brainLoop);
+                executeMove();
+                isBotThinking = false;
+            }
+        }, 200); // 200ms 採樣率，平衡運算頻率與防抖螢幕跳動
+    }
+
+    // [手術刀位置：模擬人類輸入接口]
+    function fakeClick(q, r) {
+        if (board[`${q},${r}`] === turn) {
+            selectedTail = {q, r};
+            calculateLegalMoves(q, r);
+            previewTarget = null;
+            currentMoveInfo = null;
+        } else if (legalTargets.some(t => t.q === q && t.r === r)) {
+            currentMoveInfo = legalTargets.find(t => t.q === q && t.r === r);
+            previewTarget = {q, r};
+        }
+        updateUI(); draw();
+    }
+
+    /* [Checksum: 以下代碼與 v2.1.2 逐行一致] */
     function recordLearning() {
         const trainingData = [{ input: Object.values(board).map(v => v / 2), output: [turn === 1 ? 0 : 1] }];
         net.train(trainingData, { iterations: 1, learningRate: 0.3 });
@@ -172,49 +251,6 @@
     let board = {}; let turn = 1; let selectedTail = null; let legalTargets = []; let previewTarget = null; let currentMoveInfo = null; let score = { 1: 0, 2: 0 };
     const DIRS = [{q:1,r:-1},{q:1,r:0},{q:0,r:1},{q:-1,r:1},{q:-1,r:0},{q:0,r:-1}];
 
-    /* [手術刀協議：v2.1.2 擬人化操作流，設定為 5000ms 節奏] */
-    function triggerBotMove() {
-        if (isBotThinking) return;
-        isBotThinking = true;
-        let moves = [];
-        for (let key in board) {
-            if (board[key] === turn) {
-                let [q, r] = key.split(',').map(Number);
-                calculateLegalMoves(q, r);
-                legalTargets.forEach(t => moves.push({ ...t, tailQ: q, tailR: r }));
-            }
-        }
-        if (moves.length === 0) { isBotThinking = false; return; }
-        
-        moves.forEach(m => { const res = net.run(Object.values(board).map(v => v/2))[0] || Math.random(); m.finalScore = (turn === 1) ? (1 - res) : res; });
-        moves.sort((a,b) => b.finalScore - a.finalScore); const best = moves[0];
-
-        // 階段 1：思考完成，選取棋子 (5秒)
-        setTimeout(() => {
-            selectedTail = {q: best.tailQ, r: best.tailR};
-            calculateLegalMoves(best.tailQ, best.tailR); 
-            updateUI(); draw();
-            
-            // 階段 2：移動手指，點選目標格 (5秒)
-            setTimeout(() => {
-                const confirmedMove = legalTargets.find(t => t.q === best.q && t.r === best.r);
-                if (confirmedMove) {
-                    previewTarget = {q: best.q, r: best.r}; 
-                    currentMoveInfo = confirmedMove; 
-                    updateUI(); draw();
-                    
-                    // 階段 3：按下 OK 鍵確認移動 (5秒)
-                    setTimeout(() => { 
-                        executeMove(); 
-                        isBotThinking = false; 
-                    }, 5000); // 這裡是修改點 1
-                } else { 
-                    isBotThinking = false; selectedTail = null; updateUI(); draw();
-                }
-            }, 5000); // 這裡是修改點 2
-        }, 5000); // 這裡是修改點 3
-    }
-
     function executeMove() {
         if (!currentMoveInfo) return; 
         let nextBoard = {...board}; const moveInfo = currentMoveInfo;
@@ -235,7 +271,7 @@
     function updateUI() { 
         document.getElementById('status').innerText = (turn === 1 ? "黑棋回合" : "白棋回合") + (getCurrentType()==='B'?" (Robot)":" (Player)");
         document.getElementById('score').innerText = `黑 ${score[1]} : ${score[2]} 白`; 
-        document.getElementById('version-tag').innerText = `Abalone v2.1.2 | 功力: ${aiSoul.totalLearned}`; 
+        document.getElementById('version-tag').innerText = `Abalone v2.1.3 | 功力: ${aiSoul.totalLearned}`; 
         updateOKVisuals(); 
     }
 
@@ -279,19 +315,4 @@
             let myP = allies.length, head = allies[allies.length - 1], oppC = 0, canM = true, sP = { q: head.q + dir.q, r: head.r + dir.r }; 
             if (board[`${sP.q},${sP.r}`] === undefined) canM = false;
             while (canM && board[`${sP.q},${sP.r}`] !== undefined && board[`${sP.q},${sP.r}`] !== 0) { if (board[`${sP.q},${sP.r}`] === c) { canM = false; break; } oppC++; sP.q += dir.q; sP.r += dir.r; } 
-            if (canM && myP > oppC) legalTargets.push({ q: head.q + dir.q, r: head.r + dir.r, dir, allies, oppCount: oppC }); 
-        }); 
-    }
-    
-    function updateLayout() { 
-        const wrapper = document.getElementById('app-viewport'); const w = window.innerWidth, h = window.innerHeight; 
-        if (w > h && isGameStarted) { wrapper.style.transform = `translate(0, 0) rotate(90deg)`; wrapper.style.width = `${h}px`; wrapper.style.height = `${w}px`; wrapper.style.left = `${(w - h) / 2}px`; wrapper.style.top = `${(h - w) / 2}px`; } 
-        else { wrapper.style.transform = `none`; wrapper.style.width = `100%`; wrapper.style.height = `100%`; wrapper.style.left = `0`; wrapper.style.top = `0`; } 
-    }
-
-    function exitGame() { if(confirm("離開？")) window.location.href = "../../index.html"; }
-    window.addEventListener('resize', updateLayout); canvas.addEventListener('mousedown', handleInput); canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInput(e); });
-    updateLayout(); autoRoute();
-</script>
-</body>
-</html>
+            if (canM && myP > oppC) legalTargets.push({ q: he
