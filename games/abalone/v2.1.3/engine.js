@@ -1,3 +1,4 @@
+window.ENGINE_VERSION = "v2.1.2";
 let board = {}; let turn = 1; let score = { 1: 0, 2: 0 };
 let BLACK_TYPE = 'P'; let WHITE_TYPE = 'P';
 let isGameStarted = false;
