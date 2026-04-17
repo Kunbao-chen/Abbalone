@@ -1,0 +1,25 @@
+* { -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; box-sizing: border-box; }
+html, body { overscroll-behavior: none; height: 100%; width: 100%; margin: 0; padding: 0; overflow: hidden; background: #2c3e50; font-family: sans-serif; }
+#app-viewport { position: fixed; top: 0; left: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform 0.3s ease; transform-origin: center center; overflow: hidden; }
+.top-bar { position: absolute; top: 15px; width: 90%; max-width: 450px; display: flex; justify-content: space-between; align-items: center; z-index: 20; }
+.reset-wrapper { position: relative; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; }
+.reset-wrapper svg { position: absolute; transform: rotate(-90deg); width: 100%; height: 100%; pointer-events: none; }
+.reset-wrapper circle { fill: none; stroke-width: 4; stroke-linecap: round; }
+.circle-bg { stroke: rgba(255, 255, 255, 0.1); }
+.circle-progress { stroke: #e74c3c; stroke-dasharray: 126; stroke-dashoffset: 126; transition: stroke-dashoffset 0.1s linear; }
+.reset-btn { width: 36px; height: 36px; border-radius: 50%; background: #95a5a6; border: none; color: white; font-size: 9px; font-weight: bold; cursor: pointer; z-index: 2; }
+.exit-btn { padding: 6px 15px; font-size: 0.8rem; background: #95a5a6; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+.info { background: rgba(255,255,255,0.9); padding: 5px 12px; border-radius: 8px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+.game-container { display: flex; flex-direction: column; align-items: center; width: 100%; }
+canvas { background: #fff; border-radius: 50%; box-shadow: 0 10px 30px rgba(0,0,0,0.3); width: 80vmin; height: 80vmin; max-width: 450px; max-height: 450px; touch-action: none; margin: 10px 0; }
+.ok-btn { padding: 12px 45px; font-size: 1.1rem; cursor: pointer; border: none; border-radius: 30px; background: #7f8c8d; color: white; font-weight: bold; box-shadow: 0 4px 0 #34495e; z-index: 10; transition: all 0.3s; }
+.ok-btn.active-ready { background: #27ae60 !important; box-shadow: 0 4px 0 #1e8449 !important; }
+@keyframes orbit-glow { 0% { box-shadow: 0 0 5px #2ecc71; border: 2px solid #2ecc71; } 50% { box-shadow: 0 0 20px #2ecc71, 0 0 30px rgba(46, 204, 113, 0.5); border: 2px solid #fff; } 100% { box-shadow: 0 0 5px #2ecc71; border: 2px solid #2ecc71; } }
+.ok-btn.turn-glow { animation: orbit-glow 1.5s ease-in-out infinite; }
+.control-row { display: flex; align-items: center; justify-content: center; gap: 40px; width: 100%; margin: 8px 0; }
+.surrender-btn { width: 44px; height: 44px; border-radius: 50%; background: #c0392b; border: none; color: white; font-size: 13px; font-weight: bold; cursor: pointer; z-index: 2; box-shadow: 0 3px 0 #962d22; transition: transform 0.1s linear; }
+#setup-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 500; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.setup-card { width: 85vw; max-width: 400px; display: flex; flex-direction: column; align-items: center; }
+.setup-title { font-size: 1.25rem; margin-bottom: 4vh; color: #fff; font-weight: 800; text-align: center; width: 100%; }
+.flow-btn { width: 100%; padding: 3vh 20px; margin: 1.2vh 0; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; cursor: pointer; background: #34495e; color: white; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 0 #1a252f; transition: all 0.1s; text-align: center; }
+.btn-back { background: #7f8c8d !important; box-shadow: 0 4px 0 #616a6b !important; margin-top: 2vh; }
