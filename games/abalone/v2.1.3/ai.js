@@ -1,3 +1,4 @@
+window.AI_VERSION = "v2.1.3";
 const SOUL_KEY = "Gamy_Abalone_Soul_v2";
 let aiSoul = { totalLearned: 1 }; 
 let net;
