@@ -1,4 +1,8 @@
 window.ENGINE_VERSION = "v2.1.2";
+// 確保所有模式都能正確識別當前玩家類型
+window.getCurrentType = function() {
+    return (turn === 1) ? BLACK_TYPE : WHITE_TYPE;
+};
 let board = {}; let turn = 1; let score = { 1: 0, 2: 0 };
 let BLACK_TYPE = 'P'; let WHITE_TYPE = 'P';
 let isGameStarted = false;
