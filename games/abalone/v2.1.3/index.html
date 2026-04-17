@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>智推棋 Abalone - Modular v2.x</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/brain.js"></script>
+</head>
+<body>
+    <div id="app-viewport">
+        <div id="setup-overlay"><div class="setup-card" id="overlay-content"></div></div>
+        <div class="top-bar">
+            <div class="reset-wrapper">
+                <svg><circle class="circle-bg" cx="25" cy="25" r="20"/><circle id="progressCircle" class="circle-progress" cx="25" cy="25" r="20"/></svg>
+                <button id="resetBtn" class="reset-btn">RESET</button>
+            </div>
+            <div class="info">
+                <div id="status" style="font-weight: bold;">初始化</div>
+                <div id="score" style="font-size: 0.8rem; color: #e74c3c;">黑 0 : 0 白</div>
+            </div>
+            <button class="exit-btn" onclick="exitGame()">EXIT</button>
+        </div>
+        <div class="game-container">
+            <div class="control-row">
+                <button id="okBtnTop" class="ok-btn" disabled onclick="executeMove()">OK</button>
+                <div class="surrender-wrapper"><button id="surBtnTop" class="surrender-btn">認輸</button></div>
+            </div>
+            <canvas id="gameBoard" width="550" height="550"></canvas>
+            <div class="control-row">
+                <button id="okBtnBottom" class="ok-btn" disabled onclick="executeMove()">OK</button>
+                <div class="surrender-wrapper"><button id="surBtnBottom" class="surrender-btn">認輸</button></div>
+            </div>
+        </div>
+    </div>
+    <div id="version-tag">Abalone Modular | Dev Mode</div>
+
+    <script src="engine.js"></script>
+    <script src="ui.js"></script>
+    <script src="ai.js"></script>
+</body>
+</html>
