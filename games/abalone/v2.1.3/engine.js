@@ -1,14 +1,10 @@
-// Abalone Engine v2.1.4
+window.ENGINE_VERSION = "v2.1.4";
 window.board = {}; 
 window.turn = 1; 
 window.score = { 1: 0, 2: 0 };
 window.BLACK_TYPE = 'P'; 
 window.WHITE_TYPE = 'P';
 window.isGameStarted = false;
-window.selectedTail = null; 
-window.legalTargets = []; 
-window.previewTarget = null; 
-window.currentMoveInfo = null;
 
 const DIRS = [{q:1,r:-1},{q:1,r:0},{q:0,r:1},{q:-1,r:1},{q:-1,r:0},{q:0,r:-1}];
 
@@ -18,9 +14,9 @@ function initBoard() {
             if (Math.abs(q + r) <= 4) { 
                 let val = 0; 
                 if (r <= -3) val = 2; 
-                if (r == -2 && (q == 0 || q == 1 || q == 2)) val = 2; // 嚴格遵守 v2.1.2 條件
+                if (r == -2 && (q >= 0 && q <= 2)) val = 2; 
                 if (r >= 3) val = 1; 
-                if (r == 2 && (q == 0 || q == -1 || q == -2)) val = 1;
+                if (r == 2 && (q <= 0 && q >= -2)) val = 1;
                 window.board[`${q},${r}`] = val; 
             } 
         } 
@@ -61,8 +57,7 @@ function executeMove() {
     }
     window.board = nextBoard; window.selectedTail = null; window.legalTargets = []; window.previewTarget = null; window.currentMoveInfo = null;
     if (window.score[window.turn] >= 6) { concludeGame(window.turn); return; }
-    window.turn = (window.turn === 1) ? 2 : 1; 
-    updateUI(); draw();
+    window.turn = (window.turn === 1) ? 2 : 1; updateUI(); draw();
     if (window.isGameStarted && getCurrentType() === 'B') triggerBotMove();
 }
 
