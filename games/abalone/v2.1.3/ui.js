@@ -1,15 +1,12 @@
-/* --- [手術刀協議] 嚴格還原 v2.1.2 寫法 --- */
 window.UI_VERSION = "v2.1.4";
 const canvas = document.getElementById('gameBoard'); const ctx = canvas.getContext('2d');
 const HEX_SIZE = 32; const OFFSET = { x: 275, y: 275 };
 let selectedTail = null; let legalTargets = []; let previewTarget = null; let currentMoveInfo = null;
 
 function updateUI() { 
-    const typeStr = (typeof getCurrentType === 'function') ? (getCurrentType() === 'B' ? " (Robot)" : " (Player)") : "";
-    document.getElementById('status').innerText = (turn === 1 ? "黑棋" : "白棋") + "回合" + typeStr; 
+    document.getElementById('status').innerText = (turn === 1 ? "黑棋" : "白棋") + "回合"; 
     document.getElementById('score').innerText = `黑 ${score[1]} : ${score[2]} 白`; 
     
-    // 版本號顯示需求
     const vt = document.getElementById('version-tag');
     if (vt) vt.innerHTML = `Frame: v2.1.4 | UI: ${window.UI_VERSION} | ENG: ${window.ENGINE_VERSION} | AI: ${window.AI_VERSION}`;
 
@@ -21,7 +18,6 @@ function updateUI() {
     if (previewTarget) { activeBtn.disabled = false; activeBtn.classList.add('active-ready'); } 
 }
 
-// 精確還原 v2.1.2 第 510 行邏輯
 function setupResetLogic() {
     const btn = document.getElementById('resetBtn');
     const circle = document.getElementById('progressCircle');
@@ -39,7 +35,6 @@ function setupResetLogic() {
     btn.onmouseup = btn.onmouseleave = btn.ontouchend = end;
 }
 
-// 精確還原 v2.1.2 第 530 行邏輯
 function setupSurrenderLogic() {
     [document.getElementById('surBtnTop'), document.getElementById('surBtnBottom')].forEach(btn => {
         btn.onclick = () => {
@@ -63,9 +58,7 @@ function draw() {
             let isTail = selectedTail && selectedTail.q === q && selectedTail.r === r;
             ctx.strokeStyle = isTail ? "#f1c40f" : "#000"; ctx.lineWidth = isTail ? 4 : 1; ctx.stroke();
         }
-        // 還原 v2.1.2 紅圈半徑 0.5
         if (legalTargets.some(t=>t.q===q&&t.r===r)) { ctx.beginPath(); ctx.arc(x,y,HEX_SIZE*0.5,0,Math.PI*2); ctx.strokeStyle="#e74c3c"; ctx.lineWidth=4; ctx.stroke(); }
-        // 還原 v2.1.2 藍光特效數值
         if (previewTarget && previewTarget.q===q&&previewTarget.r===r) { 
             ctx.save();
             ctx.shadowBlur = 15; ctx.shadowColor = "#00d2ff";
@@ -75,7 +68,6 @@ function draw() {
     }
 }
 
-// 精確還原 v2.1.2 第 460 行邏輯 (修正置中)
 function updateLayout() { 
     const wrapper = document.getElementById('app-viewport'); const w = window.innerWidth, h = window.innerHeight; 
     if (w > h && isGameStarted) { 
@@ -83,39 +75,12 @@ function updateLayout() {
         wrapper.style.width = `${h}px`; wrapper.style.height = `${w}px`; 
         wrapper.style.left = `${(w - h) / 2}px`; wrapper.style.top = `${(h - w) / 2}px`; 
     } else { 
-        // 手術刀：還原 v2.1.2，移除 left/top 設定，恢復 vw/vh 單位
         wrapper.style.transform = `none`; 
         wrapper.style.width = `100vw`; 
         wrapper.style.height = `100vh`; 
         wrapper.style.left = ``; 
         wrapper.style.top = ``; 
     } 
-}
-
-function startGame(mode, side, bType, wType) { 
-    window.BLACK_TYPE=bType; window.WHITE_TYPE=wType; window.isGameStarted = true; 
-    document.getElementById('setup-overlay').style.display='none'; 
-    initBoard(); 
-    setupResetLogic(); // 掛載功能
-    setupSurrenderLogic(); // 掛載功能
-    updateLayout();
-}
-
-function showModeSelect() {
-    document.getElementById('overlay-content').innerHTML = `
-        <div style="font-size:1.25rem; margin-bottom:4vh; color:#fff; font-weight:800;">智推棋 Abalone v2.1.4</div>
-        <button class="flow-btn" onclick="startGame('PVP', 1, 'P', 'P')">雙人對抗 (PVP)</button>
-        <button class="flow-btn" onclick="showSideSelect()">電腦對抗 (PVB)</button>
-    `;
-}
-
-function showSideSelect() {
-    document.getElementById('overlay-content').innerHTML = `
-        <div style="font-size:1.25rem; margin-bottom:4vh; color:#fff; font-weight:800;">選擇您的順序</div>
-        <button class="flow-btn" onclick="startGame('PVB', 1, 'P', 'B')">玩家先行 (黑)</button>
-        <button class="flow-btn" onclick="startGame('PVB', 1, 'B', 'P')">玩家後行 (白)</button>
-        <button class="flow-btn" style="background:#7f8c8d !important;" onclick="showModeSelect()">返回</button>
-    `;
 }
 
 function hexToPixel(q, r) { return { x: HEX_SIZE * Math.sqrt(3) * (q + r/2) + OFFSET.x, y: HEX_SIZE * (3/2) * r + OFFSET.y }; }
@@ -140,5 +105,9 @@ function handleInput(q, r) {
     updateUI(); draw();
 }
 
-showModeSelect();
+// 嚴格還原 v2.1.2 初始流程：直接啟動
+window.isGameStarted = true;
+initBoard();
+setupResetLogic();
+setupSurrenderLogic();
 updateLayout();
