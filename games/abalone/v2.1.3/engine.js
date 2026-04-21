@@ -1,4 +1,4 @@
-window.ENGINE_VERSION = "v3.1.1";
+window.ENGINE_VERSION = "v3.1.2";
 
 const Engine = (function() {
     let board = new Map();
@@ -12,7 +12,7 @@ const Engine = (function() {
             for (let r = -4; r <= 4; r++) {
                 if (Math.abs(q + r) <= 4) {
                     let val = 0;
-                    // 問題 5 修正：黑白棋沿著 q 軸 (橫向) 分佈
+                    // 初始化：黑棋在一端(q<= -3)，白棋在另一端(q>= 3)
                     if (q <= -3) val = 1; 
                     else if (q == -2 && r >= 0 && r <= 2) val = 1;
                     else if (q >= 3) val = 2;
@@ -25,18 +25,36 @@ const Engine = (function() {
         selection = []; legalMoves = []; pendingMove = null;
     }
 
-    function surrender() {
-        const winner = 3 - turn;
-        return winner;
+    function surrender() { return 3 - turn; }
+
+    function handleTap(q, r) {
+        if (!board.has(`${q},${r}`)) return false;
+        const piece = board.get(`${q},${r}`);
+
+        // 簡單邏輯：點擊自己的棋子進行選取
+        if (piece === turn) {
+            selection = [{q, r}];
+            pendingMove = null;
+            return true;
+        } 
+        // 點擊空白處嘗試移動 (此處應有 Abalone 複雜移動邏輯，暫以點擊紀錄為示範)
+        if (piece === 0 && selection.length > 0) {
+            pendingMove = { targetQ: q, targetR: r };
+            return true;
+        }
+        return false;
     }
 
-    // ... (維持 handleTap 與 execute 邏輯，確保計算過程使用內部變數) ...
-    // 這裡省略重複的座標計算細節，確保對外暴露以下 API
-    return { 
-        init, 
-        surrender,
-        handleTap: (q, r) => { /* 邏輯代碼... */ return true; }, 
-        execute: () => { /* 邏輯代碼... */ return true; },
-        getState: () => ({ board, turn, scores, selection, legalMoves, pendingMove, isGameOver: scores[1]>=6||scores[2]>=6 }) 
-    };
+    function execute() {
+        if (!pendingMove) return false;
+        // 執行棋位交換
+        const {q, r} = selection[0];
+        board.set(`${q},${r}`, 0);
+        board.set(`${pendingMove.targetQ},${pendingMove.targetR}`, turn);
+        turn = 3 - turn;
+        selection = []; pendingMove = null;
+        return true;
+    }
+
+    return { init, surrender, handleTap, execute, getState: () => ({ board, turn, scores, selection, legalMoves, pendingMove }) };
 })();
