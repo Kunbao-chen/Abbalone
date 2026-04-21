@@ -1,29 +1,32 @@
-window.UI_VERSION = "v3.2.0";
+window.UI_VERSION = "v3.2.1";
 
 document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById('global-version-tag').innerText = 
-        `HTML:${window.HTML_VERSION} | ENG:${window.ENGINE_VERSION} | UI:${window.UI_VERSION}`;
-
     const canvas = document.getElementById('game-canvas');
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const btnPrev = document.getElementById('btn-prev');
     const btnNext = document.getElementById('btn-next');
     const btnOk = document.getElementById('btn-execute-top');
+    const versionTag = document.getElementById('global-version-tag');
+    
     let CENTER = { x: 0, y: 0 }, HEX_SIZE = 0, isTracing = false;
 
-    const resizeObserver = new ResizeObserver(entries => {
-        for (let entry of entries) {
-            const size = Math.min(entry.contentRect.width, entry.contentRect.height) - 60;
-            canvas.width = size * window.devicePixelRatio;
-            canvas.height = size * window.devicePixelRatio;
-            canvas.style.width = `${size}px`; canvas.style.height = `${size}px`;
-            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-            CENTER = { x: size / 2, y: size / 2 };
-            HEX_SIZE = size / 15.5;
-            render();
-        }
-    });
-    resizeObserver.observe(document.getElementById('board-wrapper'));
+    if (versionTag) versionTag.innerText = `ENG:${window.ENGINE_VERSION} | UI:${window.UI_VERSION}`;
+
+    const resize = () => {
+        const wrapper = document.getElementById('board-wrapper');
+        const size = Math.min(wrapper.clientWidth, wrapper.clientHeight) - 60;
+        canvas.width = size * window.devicePixelRatio;
+        canvas.height = size * window.devicePixelRatio;
+        canvas.style.width = `${size}px`; canvas.style.height = `${size}px`;
+        ctx.resetTransform();
+        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        CENTER = { x: size / 2, y: size / 2 };
+        HEX_SIZE = size / 15.5;
+        render();
+    };
+    window.addEventListener('resize', resize);
+    setTimeout(resize, 100);
 
     function hexToPixel(q, r) {
         return { x: CENTER.x + HEX_SIZE * 1.5 * q, y: CENTER.y + HEX_SIZE * Math.sqrt(3) * (r + q / 2) };
@@ -45,57 +48,45 @@ document.addEventListener("DOMContentLoaded", () => {
         state.board.forEach((piece, key) => {
             const [q, r] = key.split(',').map(Number);
             const { x, y } = hexToPixel(q, r);
-            
-            // 棋孔
             ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.8, 0, Math.PI * 2);
             ctx.fillStyle = "#ecf0f1"; ctx.fill();
-
-            // 棋子
             if (piece !== 0) {
                 ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.7, 0, Math.PI * 2);
                 ctx.fillStyle = piece === 1 ? "#2c3e50" : "#ffffff"; ctx.fill();
                 if (piece === 2) { ctx.strokeStyle = "#000"; ctx.lineWidth = 1; ctx.stroke(); }
             }
-
-            // 劃線選取高亮
             if (state.selection.some(s => s.q === q && s.r === r)) {
-                ctx.strokeStyle = "#3498db"; ctx.lineWidth = 4;
+                ctx.strokeStyle = "#3498db"; ctx.lineWidth = 3;
                 ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.75, 0, Math.PI*2); ctx.stroke();
             }
         });
 
-        // 繪製路徑箭頭
-        if (state.pathIndex !== -1) {
+        if (state.pathIndex !== -1 && state.legalPaths[state.pathIndex]) {
             const path = state.legalPaths[state.pathIndex];
             const color = path.type === 'in-line' ? "#2ecc71" : "#f1c40f";
             path.sel.forEach(s => {
                 const start = hexToPixel(s.q, s.r);
                 const end = hexToPixel(s.q + path.dir.q, s.r + path.dir.r);
-                drawArrow(start.x, start.y, end.x, end.y, color);
-                // 虛影預覽
-                ctx.beginPath(); ctx.arc(end.x, end.y, HEX_SIZE * 0.5, 0, Math.PI*2);
-                ctx.fillStyle = color + "66"; ctx.fill();
+                ctx.strokeStyle = color; ctx.lineWidth = 4;
+                ctx.setLineDash([5, 5]); ctx.beginPath(); ctx.moveTo(start.x, start.y); ctx.lineTo(end.x, end.y); ctx.stroke();
+                ctx.setLineDash([]); ctx.beginPath(); ctx.arc(end.x, end.y, HEX_SIZE * 0.4, 0, Math.PI*2);
+                ctx.fillStyle = color + "88"; ctx.fill();
             });
         }
-
         updateUI(state);
-    }
-
-    function drawArrow(fx, fy, tx, ty, color) {
-        ctx.strokeStyle = color; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(tx, ty); ctx.stroke();
     }
 
     function updateUI(state) {
         const hasPaths = state.legalPaths.length > 0;
-        btnPrev.disabled = !hasPaths; btnNext.disabled = !hasPaths;
-        btnOk.disabled = state.pathIndex === -1;
-        btnPrev.style.opacity = btnNext.style.opacity = hasPaths ? "1" : "0.3";
-        document.getElementById('turn-display').innerText = state.turn === 1 ? "黑棋回合" : "白棋回合";
+        const turnEl = document.getElementById('turn-display');
+        if (btnPrev) { btnPrev.disabled = !hasPaths; btnPrev.style.opacity = hasPaths ? "1" : "0.3"; }
+        if (btnNext) { btnNext.disabled = !hasPaths; btnNext.style.opacity = hasPaths ? "1" : "0.3"; }
+        if (btnOk) { btnOk.disabled = state.pathIndex === -1; }
+        if (turnEl) turnEl.innerText = state.turn === 1 ? "黑棋回合" : "白棋回合";
     }
 
     canvas.addEventListener('pointerdown', (e) => {
-        isTracing = true; Engine.init(); // 重新開始劃線
+        isTracing = true;
         const p = pixelToHex(e.offsetX, e.offsetY);
         if (Engine.traceSelection(p.q, p.r)) render();
     });
@@ -110,9 +101,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isTracing) { isTracing = false; Engine.finalizeSelection(); render(); }
     });
 
-    btnPrev.onclick = () => { Engine.cyclePath(-1); render(); };
-    btnNext.onclick = () => { Engine.cyclePath(1); render(); };
-    btnOk.onclick = () => { if (Engine.execute()) render(); };
+    if (btnPrev) btnPrev.onclick = () => { Engine.cyclePath(-1); render(); };
+    if (btnNext) btnNext.onclick = () => { Engine.cyclePath(1); render(); };
+    if (btnOk) btnOk.onclick = () => { if (Engine.execute()) render(); };
 
     Engine.init();
+    render();
 });
