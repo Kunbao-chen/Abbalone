@@ -1,5 +1,6 @@
 // 手術刀：加註修改問題 - v3.1.3: 修正棋盤旋轉對齊長軸、解決棋位溢出邊界、優化棋孔配色與白棋黑邊辨識度。
-window.UI_VERSION = "v3.1.3";
+// 手術刀：加註修改問題 - v3.1.4: 回滾至原始尖頂佈局(Pointy Top)作為基準、還原棋孔為淺灰色(#ecf0f1)、保留白棋黑邊。
+window.UI_VERSION = "v3.1.4";
 
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('global-version-tag').innerText = 
@@ -13,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const resizeObserver = new ResizeObserver(entries => {
         for (let entry of entries) {
             const { width, height } = entry.contentRect;
-            // 手術刀：增加緩衝邊距至 60 解決邊界溢出
+            // 保留安全邊距避免溢出
             const size = Math.min(width, height) - 60; 
             canvas.width = size * window.devicePixelRatio;
             canvas.height = size * window.devicePixelRatio;
@@ -21,25 +22,25 @@ document.addEventListener("DOMContentLoaded", () => {
             canvas.style.height = `${size}px`;
             ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
             CENTER = { x: size / 2, y: size / 2 };
-            // 手術刀：係數調至 15.5 縮小棋盤確保安全邊距
+            // 維持 15.5 確保棋盤比例在大螢幕上適中
             HEX_SIZE = size / 15.5; 
             render();
         }
     });
     resizeObserver.observe(wrapper);
 
-    // 手術刀：改用平頂 (Flat Top) 投影矩陣，使長軸精確旋轉至垂直方向
+    // 手術刀：還原為原始尖頂 (Pointy Top) 投影公式
     function hexToPixel(q, r) {
-        const x = CENTER.x + HEX_SIZE * (3 / 2) * r;
-        const y = CENTER.y + HEX_SIZE * (Math.sqrt(3) / 2 * r + Math.sqrt(3) * q);
+        const x = CENTER.x + HEX_SIZE * Math.sqrt(3) * (q + r / 2);
+        const y = CENTER.y + HEX_SIZE * (3 / 2) * r;
         return { x, y };
     }
 
     function pixelToHex(px, py) {
         let x = (px - CENTER.x) / HEX_SIZE;
         let y = (py - CENTER.y) / HEX_SIZE;
-        let r = (2 / 3 * x);
-        let q = (Math.sqrt(3) / 3 * y - 1 / 3 * r);
+        let q = (Math.sqrt(3)/3 * x - 1/3 * y);
+        let r = (2/3 * y);
         return roundHex(q, r);
     }
 
@@ -65,13 +66,13 @@ document.addEventListener("DOMContentLoaded", () => {
             const [q, r] = key.split(',').map(Number);
             const { x, y } = hexToPixel(q, r);
             
-            // 手術刀：變更棋孔顏色為深色以增加對比度
-            drawCircle(x, y, HEX_SIZE * 0.8, "#2d2d44");
+            // 手術刀：還原棋孔顏色為原本的淺灰色
+            drawCircle(x, y, HEX_SIZE * 0.8, "#ecf0f1");
 
             if (piece !== 0) {
                 drawCircle(x, y, HEX_SIZE * 0.7, piece === 1 ? "#2c3e50" : "#f1f2f6");
                 
-                // 手術刀：白棋 (piece 2) 加上黑邊
+                // 手術刀：保留白棋 (piece 2) 描黑邊邏輯，確保在淺灰孔位上可辨識
                 if (piece === 2) {
                     ctx.strokeStyle = "#000000";
                     ctx.lineWidth = 1;
