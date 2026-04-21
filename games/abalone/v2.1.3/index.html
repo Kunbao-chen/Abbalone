@@ -3,37 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>智推棋 Abalone - v2.1.4</title>
+    <title>Abalone Pro (PVP)</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://unpkg.com/brain.js"></script>
+    <script>window.HTML_VERSION = "v3.0.0";</script>
 </head>
 <body>
-    <div id="app-viewport">
-        <div class="top-bar">
-            <div class="reset-wrapper">
-                <svg><circle class="circle-bg" cx="25" cy="25" r="20"/><circle id="progressCircle" class="circle-progress" cx="25" cy="25" r="20"/></svg>
-                <button id="resetBtn" class="reset-btn">RESET</button>
+    <div id="game-app">
+        <header class="status-panel">
+            <button id="btn-reset" class="icon-btn">↻ 重置</button>
+            <div class="score-board">
+                <span id="score-black" class="score black-active">黑: 0</span>
+                <span id="turn-indicator">黑棋回合</span>
+                <span id="score-white" class="score">白: 0</span>
             </div>
-            <div class="info">
-                <div id="status" style="font-weight: bold;">載入中...</div>
-                <div id="score" style="font-size: 0.8rem; color: #e74c3c;">黑 0 : 0 白</div>
-            </div>
-            <button class="exit-btn" onclick="location.reload()">EXIT</button>
-        </div>
-        <div class="game-container">
-            <button id="okBtnTop" class="ok-btn" disabled onclick="executeMove()">OK</button>
-            <canvas id="gameBoard" width="550" height="550"></canvas>
-            <button id="okBtnBottom" class="ok-btn" disabled onclick="executeMove()">OK</button>
-            <div style="margin-top:10px; display:flex; gap:20px;">
-                <button id="surBtnTop" class="surrender-btn">認輸</button>
-                <button id="surBtnBottom" class="surrender-btn">認輸</button>
-            </div>
-        </div>
+            <button id="btn-surrender" class="icon-btn danger">認輸</button>
+        </header>
+
+        <main class="board-container" id="board-wrapper">
+            <canvas id="game-canvas"></canvas>
+        </main>
+
+        <footer class="control-panel">
+            <button id="btn-execute" class="action-btn" disabled>確認走棋</button>
+        </footer>
     </div>
-    <div id="version-tag">Initializing v2.1.4...</div>
+
+    <div id="global-version-tag">Loading versions...</div>
 
     <script src="engine.js"></script>
-    <script src="ai.js"></script>
     <script src="ui.js"></script>
 </body>
 </html>
