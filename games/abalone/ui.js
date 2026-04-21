@@ -1,6 +1,5 @@
-// 手術刀：加註修改問題 - v3.1.4: 回滾至原始尖頂佈局(Pointy Top)作為基準、還原棋孔為淺灰色(#ecf0f1)。
-// 手術刀：加註修改問題 - v3.1.5: 實作棋盤右旋 60 度視覺映射、同步修正點擊判定逆向旋轉、保持白棋黑邊。
-window.UI_VERSION = "v3.1.5";
+// 手術刀：加註修改問題 - v3.1.6: 實作平頂佈局(Flat Top)以達成精確右旋 30 度、同步修正點擊判定公式。
+window.UI_VERSION = "v3.1.6";
 
 document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('global-version-tag').innerText = 
@@ -21,25 +20,26 @@ document.addEventListener("DOMContentLoaded", () => {
             canvas.style.height = `${size}px`;
             ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
             CENTER = { x: size / 2, y: size / 2 };
+            // 手術刀：調整縮放係數以適應平頂佈局視覺寬度
             HEX_SIZE = size / 15.5; 
             render();
         }
     });
     resizeObserver.observe(wrapper);
 
-    // 原始尖頂投影公式 (不變)
+    // 手術刀：切換為平頂佈局投影公式 (右旋 30 度)
     function hexToPixel(q, r) {
-        const x = CENTER.x + HEX_SIZE * Math.sqrt(3) * (q + r / 2);
-        const y = CENTER.y + HEX_SIZE * (3 / 2) * r;
+        const x = CENTER.x + HEX_SIZE * (3 / 2) * q;
+        const y = CENTER.y + HEX_SIZE * Math.sqrt(3) * (r + q / 2);
         return { x, y };
     }
 
-    // 原始逆向投影公式 (不變)
+    // 手術刀：同步更新平頂佈局逆向矩陣
     function pixelToHex(px, py) {
         let x = (px - CENTER.x) / HEX_SIZE;
         let y = (py - CENTER.y) / HEX_SIZE;
-        let q = (Math.sqrt(3)/3 * x - 1/3 * y);
-        let r = (2/3 * y);
+        let q = (2/3 * x);
+        let r = (-1/3 * x + Math.sqrt(3)/3 * y);
         return roundHex(q, r);
     }
 
@@ -62,21 +62,16 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         state.board.forEach((piece, key) => {
-            const [origQ, origR] = key.split(',').map(Number);
+            const [q, r] = key.split(',').map(Number);
             
-            // 手術刀：右旋 60 度視覺映射邏輯
-            const q = -origR;
-            const r = origQ + origR;
-            
+            // 使用新公式直接投影，不再需要額外旋轉映射
             const { x, y } = hexToPixel(q, r);
             
-            // 繪製棋孔 (還原淺灰色)
             drawCircle(x, y, HEX_SIZE * 0.8, "#ecf0f1");
 
             if (piece !== 0) {
                 drawCircle(x, y, HEX_SIZE * 0.7, piece === 1 ? "#2c3e50" : "#f1f2f6");
                 
-                // 白棋黑邊
                 if (piece === 2) {
                     ctx.strokeStyle = "#000000";
                     ctx.lineWidth = 1;
@@ -84,8 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     ctx.stroke();
                 }
 
-                // 選取特效判定 (需比對原始座標)
-                if (state.selection.some(s => s.q === origQ && s.r === origR)) {
+                if (state.selection.some(s => s.q === q && s.r === r)) {
                     ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 3;
                     ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.75, 0, Math.PI*2); ctx.stroke();
                 }
@@ -108,16 +102,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     canvas.addEventListener('pointerdown', (e) => {
         const rect = canvas.getBoundingClientRect();
-        // 取得畫面上點擊的視覺座標 (q, r)
-        const visual = pixelToHex(e.clientX - rect.left, e.clientY - rect.top);
-        
-        // 手術刀：逆向旋轉映射 (將視覺座標轉回引擎原始座標)
-        // 視覺 q = -origR => origR = -visual.q
-        // 視覺 r = origQ + origR => origQ = visual.r - origR = visual.r + visual.q
-        const origQ = visual.q + visual.r;
-        const origR = -visual.q;
-        
-        if(Engine.handleTap(origQ, origR)) render();
+        // 直接取得投影座標，公式已在 pixelToHex 中處理完畢
+        const { q, r } = pixelToHex(e.clientX - rect.left, e.clientY - rect.top);
+        if(Engine.handleTap(q, r)) render();
     });
 
     Engine.init();
