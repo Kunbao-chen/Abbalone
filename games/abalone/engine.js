@@ -1,10 +1,17 @@
-window.ENGINE_VERSION = "v3.1.2";
+window.ENGINE_VERSION = "v3.2.0";
 
 const Engine = (function() {
     let board = new Map();
     let turn = 1; 
     let scores = { 1: 0, 2: 0 };
-    let selection = [], legalMoves = [], pendingMove = null;
+    let selection = []; // 存儲劃線選中的 1-3 顆棋子
+    let legalPaths = []; // 存儲所有合法路徑物件 {type: 'in-line'|'broadside', dir, shift, impactedPieces}
+    let pathIndex = -1;
+
+    const DIRS = [
+        {q:1, r:0}, {q:1, r:-1}, {q:0, r:-1},
+        {q:-1, r:0}, {q:-1, r:1}, {q:0, r:1}
+    ];
 
     function init() {
         board.clear();
@@ -12,7 +19,6 @@ const Engine = (function() {
             for (let r = -4; r <= 4; r++) {
                 if (Math.abs(q + r) <= 4) {
                     let val = 0;
-                    // 初始化：黑棋在一端(q<= -3)，白棋在另一端(q>= 3)
                     if (q <= -3) val = 1; 
                     else if (q == -2 && r >= 0 && r <= 2) val = 1;
                     else if (q >= 3) val = 2;
@@ -21,40 +27,85 @@ const Engine = (function() {
                 }
             }
         }
-        turn = 1; scores = { 1: 0, 2: 0 };
-        selection = []; legalMoves = []; pendingMove = null;
+        resetInteraction();
     }
 
-    function surrender() { return 3 - turn; }
+    function resetInteraction() {
+        selection = []; legalPaths = []; pathIndex = -1;
+    }
 
-    function handleTap(q, r) {
-        if (!board.has(`${q},${r}`)) return false;
-        const piece = board.get(`${q},${r}`);
-
-        // 簡單邏輯：點擊自己的棋子進行選取
-        if (piece === turn) {
-            selection = [{q, r}];
-            pendingMove = null;
-            return true;
-        } 
-        // 點擊空白處嘗試移動 (此處應有 Abalone 複雜移動邏輯，暫以點擊紀錄為示範)
-        if (piece === 0 && selection.length > 0) {
-            pendingMove = { targetQ: q, targetR: r };
+    // 劃線選取核心：處理滑動選棋
+    function traceSelection(q, r) {
+        if (!board.has(`${q},${r}`) || board.get(`${q},${r}`) !== turn) return false;
+        
+        if (selection.length === 0) {
+            selection.push({q, r});
             return true;
         }
-        return false;
-    }
 
-    function execute() {
-        if (!pendingMove) return false;
-        // 執行棋位交換
-        const {q, r} = selection[0];
-        board.set(`${q},${r}`, 0);
-        board.set(`${pendingMove.targetQ},${pendingMove.targetR}`, turn);
-        turn = 3 - turn;
-        selection = []; pendingMove = null;
+        const last = selection[selection.length - 1];
+        if (last.q === q && last.r === r) return false;
+
+        // 檢查是否鄰接
+        const dq = q - last.q, dr = r - last.r;
+        if (Math.abs(dq) > 1 || Math.abs(dr) > 1 || Math.abs(dq + dr) > 1) return false;
+
+        if (selection.length >= 2) {
+            const prev = selection[selection.length - 2];
+            const v1 = {q: last.q - prev.q, r: last.r - prev.r};
+            const v2 = {q: q - last.q, r: r - last.r};
+            
+            if (v1.q !== v2.q || v1.r !== v2.r) {
+                // 轉彎重算：只認最後這兩顆
+                selection = [{q: last.q, r: last.r}, {q, r}];
+            } else {
+                selection.push({q, r});
+                if (selection.length > 3) selection.shift(); // 只認後三顆
+            }
+        } else {
+            selection.push({q, r});
+        }
         return true;
     }
 
-    return { init, surrender, handleTap, execute, getState: () => ({ board, turn, scores, selection, legalMoves, pendingMove }) };
+    // 當手指放開，計算所有可行路徑
+    function finalizeSelection() {
+        if (selection.length === 0) return;
+        legalPaths = [];
+        
+        // 1. 搜尋 In-line (火車推擠) - 沿著連線兩端
+        // 2. 搜尋 Broadside (平移) - 往側面 4 個方向
+        // (此處簡化實作邏輯，僅供架構展示)
+        DIRS.forEach(dir => {
+            const path = validatePath(selection, dir);
+            if (path) legalPaths.push(path);
+        });
+
+        if (legalPaths.length > 0) pathIndex = 0;
+    }
+
+    function validatePath(sel, dir) {
+        // 核心：判斷移動類型與力量對比 (Sumito)
+        // 回傳路徑物件或 null
+        return null; // 具體邏輯由引擎完整計算後填入
+    }
+
+    function cyclePath(delta) {
+        if (legalPaths.length === 0) return;
+        pathIndex = (pathIndex + delta + legalPaths.length) % legalPaths.length;
+    }
+
+    function execute() {
+        if (pathIndex === -1) return false;
+        const p = legalPaths[pathIndex];
+        // 根據路徑更新 board...
+        turn = 3 - turn;
+        resetInteraction();
+        return true;
+    }
+
+    return { 
+        init, traceSelection, finalizeSelection, cyclePath, execute, 
+        getState: () => ({ board, turn, scores, selection, legalPaths, pathIndex }) 
+    };
 })();
