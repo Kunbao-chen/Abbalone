@@ -86,8 +86,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 事件監聽
     document.getElementById('btn-exit').onclick = () => {
-        // 根據 folder.csv，從 games/abalone/v2.1.3/ 回到根目錄 index.html 需三層
-        if(confirm("確定退出回大廳？")) window.location.href = "../../../index.html";
+        // 手術刀：根據現有目錄結構 games/abalone/，回到根目錄只需兩層 ../../
+        if(confirm("確定退出回大廳？")) window.location.href = "../../index.html";
     };
 
     document.getElementById('btn-reset').onclick = () => { Engine.init(); render(); };
