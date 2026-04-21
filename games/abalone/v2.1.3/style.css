@@ -1,59 +1,61 @@
 :root {
-    --bg-color: #1a1a2d; --text-main: #ffffff; --accent-green: #2ed573;
+    --bg-color: #1a1a2d;
+    --text-main: #ffffff;
+    --accent-green: #2ed573;
+    --accent-red: #ff4757;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
 
 body, html {
-    /* 雙重保險：現代瀏覽器用 dvh，舊瀏覽器用 JS 算出的 --vh */
-    height: 100vh; height: 100dvh; height: calc(var(--vh, 1vh) * 100);
-    width: 100vw; overflow: hidden; background-color: var(--bg-color);
-    font-family: sans-serif;
+    height: 100dvh; width: 100vw;
+    background-color: var(--bg-color);
+    font-family: -apple-system, sans-serif;
+    overflow: hidden;
 }
 
-/* 預設為直式 (Portrait) 佈局：上下排列 */
-#game-app {
-    display: flex; flex-direction: column; width: 100%; height: 100%;
-    padding: env(safe-area-inset-top) 10px env(safe-area-inset-bottom);
+#game-app { display: flex; width: 100%; height: 100%; }
+
+/* 控制面板基礎樣式 */
+.control-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    z-index: 10;
 }
 
-.status-panel { display: flex; justify-content: space-between; align-items: center; padding: 10px; flex-shrink: 0; }
-.score-board { text-align: center; }
-#turn-indicator { font-size: 1.2rem; font-weight: bold; color: var(--text-main); display: block; margin: 5px 0; }
-.score { font-size: 0.9rem; color: #888; }
-.score.black-active, .score.white-active { color: var(--text-main); font-weight: bold; }
+.action-group { display: flex; gap: 10px; align-items: center; }
+.meta-group { display: flex; gap: 8px; }
 
-.icon-btn { background: rgba(255,255,255,0.1); border: none; color: white; padding: 8px 15px; border-radius: 20px; cursor: pointer; }
-.icon-btn.danger { background: rgba(255, 71, 87, 0.2); color: #ff4757; }
+.icon-btn { background: rgba(255,255,255,0.1); border: none; color: white; padding: 10px 15px; border-radius: 20px; cursor: pointer; font-size: 14px; }
+.icon-btn.danger { background: rgba(255, 71, 87, 0.2); color: var(--accent-red); }
 
-/* 棋盤容器：吃掉所有剩餘空間 */
-.board-container {
-    flex: 1; display: flex; justify-content: center; align-items: center;
-    position: relative; overflow: hidden; margin: 10px 0;
-}
-#game-canvas {
-    /* 不設絕對長寬，交由 JS ResizeObserver 接管，保證不變形且最大化 */
-    background: #ffffff; border-radius: 50%; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    touch-action: none;
-}
-
-.control-panel { display: flex; justify-content: center; align-items: center; padding: 15px; flex-shrink: 0; }
 .action-btn {
-    width: 100%; max-width: 300px; padding: 15px; border-radius: 30px; border: none;
-    font-size: 1.1rem; font-weight: bold; cursor: pointer;
-    background: #34495e; color: rgba(255,255,255,0.5); transition: 0.3s;
+    padding: 12px 25px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer;
+    background: #34495e; color: rgba(255,255,255,0.3); transition: 0.3s;
 }
-.action-btn:not(:disabled) { background: var(--accent-green); color: white; box-shadow: 0 6px 0 #219d53; }
+.action-btn:not(:disabled) { background: var(--accent-green); color: white; box-shadow: 0 4px 12px rgba(46, 213, 115, 0.4); }
+
+#turn-display { color: var(--text-main); font-weight: bold; font-size: 1.1rem; }
+
+/* 畫布容器 */
+.board-container { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; }
+#game-canvas { background: #ffffff; border-radius: 50%; box-shadow: 0 0 40px rgba(0,0,0,0.5); touch-action: none; }
 
 /* 版號標籤 */
-#global-version-tag {
-    position: fixed; bottom: 5px; right: 8px; font-family: monospace; font-size: 10px; color: rgba(255,255,255,0.4); pointer-events: none; z-index: 100;
+#global-version-tag { position: fixed; bottom: 5px; right: 8px; font-family: monospace; font-size: 10px; color: rgba(255,255,255,0.3); pointer-events: none; }
+
+/* 響應式佈局：直式 (手機) */
+@media (orientation: portrait) {
+    #game-app { flex-direction: column; }
+    .control-panel { width: 100%; height: 12vh; }
 }
 
-/* === 橫式 (Landscape) 佈局最佳化 === */
-@media (orientation: landscape) and (min-width: 500px) {
-    #game-app { flex-direction: row; align-items: stretch; }
-    .board-container { flex: 2; margin: 0 20px; }
-    .status-panel, .control-panel { flex-direction: column; justify-content: space-evenly; width: 150px; flex: 0 0 150px; }
-    .score-board { margin: 20px 0; }
+/* 響應式佈局：橫式 (電腦/平板) */
+@media (orientation: landscape) {
+    #game-app { flex-direction: row; }
+    .control-panel { flex-direction: column; width: 180px; height: 100%; justify-content: center; gap: 60px; }
+    .action-group, .meta-group { flex-direction: column; width: 100%; }
+    .action-btn, .icon-btn { width: 100%; }
 }
