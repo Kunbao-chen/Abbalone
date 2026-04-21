@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Abalone Pro PVP - v3.1.2</title>
+    <link rel="stylesheet" href="style.css">
+    <script>window.HTML_VERSION = "v3.1.2";</script>
+</head>
+<body>
+    <div id="game-app">
+        <header class="control-panel side-alpha">
+            <div class="meta-group">
+                <button id="btn-exit" class="icon-btn">✕ 退出</button>
+                <button id="btn-reset" class="icon-btn">↻ 重置</button>
+            </div>
+            <div class="action-group">
+                <button id="btn-execute-top" class="action-btn" disabled>確認走棋</button>
+                <button id="btn-surrender-top" class="icon-btn danger">認輸</button>
+            </div>
+        </header>
+
+        <main class="board-container" id="board-wrapper">
+            <canvas id="game-canvas"></canvas>
+        </main>
+
+        <footer class="control-panel side-beta">
+            <div class="action-group">
+                <button id="btn-execute-bottom" class="action-btn" disabled>確認走棋</button>
+                <button id="btn-surrender-bottom" class="icon-btn danger">認輸</button>
+            </div>
+            <div id="turn-display">黑棋回合</div>
+        </footer>
+    </div>
+
+    <div id="global-version-tag">Loading...</div>
+
+    <script src="engine.js"></script>
+    <script src="ui.js"></script>
+</body>
+</html>
