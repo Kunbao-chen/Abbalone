@@ -14,15 +14,21 @@ body, html {
     overflow: hidden;
 }
 
-#game-app { display: flex; width: 100%; height: 100%; }
+/* 統一以直屏佈局為主：無論螢幕寬度，皆為上下排列 */
+#game-app { 
+    display: flex; 
+    flex-direction: column; 
+    width: 100%; 
+    height: 100%; 
+}
 
-/* 控制面板基礎樣式 */
 .control-panel {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 15px;
-    z-index: 10;
+    height: 100px;
+    flex-shrink: 0;
 }
 
 .action-group { display: flex; gap: 10px; align-items: center; }
@@ -32,30 +38,21 @@ body, html {
 .icon-btn.danger { background: rgba(255, 71, 87, 0.2); color: var(--accent-red); }
 
 .action-btn {
-    padding: 12px 25px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer;
+    padding: 12px 20px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer;
     background: #34495e; color: rgba(255,255,255,0.3); transition: 0.3s;
 }
 .action-btn:not(:disabled) { background: var(--accent-green); color: white; box-shadow: 0 4px 12px rgba(46, 213, 115, 0.4); }
 
-#turn-display { color: var(--text-main); font-weight: bold; font-size: 1.1rem; }
+#turn-display { color: var(--text-main); font-weight: bold; font-size: 1rem; }
 
-/* 畫布容器 */
-.board-container { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; }
+.board-container { 
+    flex: 1; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    position: relative;
+    overflow: hidden;
+}
 #game-canvas { background: #ffffff; border-radius: 50%; box-shadow: 0 0 40px rgba(0,0,0,0.5); touch-action: none; }
 
-/* 版號標籤 */
 #global-version-tag { position: fixed; bottom: 5px; right: 8px; font-family: monospace; font-size: 10px; color: rgba(255,255,255,0.3); pointer-events: none; }
-
-/* 響應式佈局：直式 (手機) */
-@media (orientation: portrait) {
-    #game-app { flex-direction: column; }
-    .control-panel { width: 100%; height: 12vh; }
-}
-
-/* 響應式佈局：橫式 (電腦/平板) */
-@media (orientation: landscape) {
-    #game-app { flex-direction: row; }
-    .control-panel { flex-direction: column; width: 180px; height: 100%; justify-content: center; gap: 60px; }
-    .action-group, .meta-group { flex-direction: column; width: 100%; }
-    .action-btn, .icon-btn { width: 100%; }
-}
