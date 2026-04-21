@@ -1,7 +1,6 @@
-window.UI_VERSION = "v3.1.1";
+window.UI_VERSION = "v3.1.2";
 
 document.addEventListener("DOMContentLoaded", () => {
-    // 1. 顯示聚合版號
     document.getElementById('global-version-tag').innerText = 
         `HTML:${window.HTML_VERSION} | ENG:${window.ENGINE_VERSION} | UI:${window.UI_VERSION}`;
 
@@ -10,7 +9,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const ctx = canvas.getContext('2d');
     let CENTER = { x: 0, y: 0 }, HEX_SIZE = 0;
 
-    // 2. 修正棋盤溢出：調整 HEX_SIZE 比例
     const resizeObserver = new ResizeObserver(entries => {
         for (let entry of entries) {
             const { width, height } = entry.contentRect;
@@ -20,66 +18,89 @@ document.addEventListener("DOMContentLoaded", () => {
             canvas.style.width = `${size}px`;
             canvas.style.height = `${size}px`;
             ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-            
             CENTER = { x: size / 2, y: size / 2 };
-            // 問題 1 修正：Abalone 棋盤最寬處約為 11 個單位，除以 12.5 留出安全邊距
-            HEX_SIZE = size / 12.5; 
+            HEX_SIZE = size / 13.5; // 縮小棋盤確保不溢出
             render();
         }
     });
     resizeObserver.observe(wrapper);
 
-    // 3. 事件綁定 (問題 2, 3, 4：雙側聯動與 Exit)
-    const bindEvents = () => {
-        // Exit 鍵
-        document.getElementById('btn-exit').onclick = () => {
-            if(confirm("確定要離開遊戲回到大廳嗎？")) window.location.href = "../index.html";
-        };
+    // 核心數學函數：修正棋子不見的問題
+    function hexToPixel(q, r) {
+        // Pointy top hex orientation
+        const x = CENTER.x + HEX_SIZE * Math.sqrt(3) * (q + r / 2);
+        const y = CENTER.y + HEX_SIZE * (3 / 2) * r;
+        return { x, y };
+    }
 
-        // 重置
-        document.getElementById('btn-reset').onclick = () => {
-            if(confirm("重置棋盤？")) { Engine.init(); render(); }
-        };
+    function pixelToHex(px, py) {
+        let x = (px - CENTER.x) / HEX_SIZE;
+        let y = (py - CENTER.y) / HEX_SIZE;
+        let q = (Math.sqrt(3)/3 * x - 1/3 * y);
+        let r = (2/3 * y);
+        return roundHex(q, r);
+    }
 
-        // 雙側 OK 鍵
-        const onExecute = () => { if(Engine.execute()) render(); };
-        document.getElementById('btn-execute-top').onclick = onExecute;
-        document.getElementById('btn-execute-bottom').onclick = onExecute;
+    function roundHex(q, r) {
+        let s = -q - r;
+        let rq = Math.round(q), rr = Math.round(r), rs = Math.round(s);
+        let q_diff = Math.abs(rq - q), r_diff = Math.abs(rr - r), s_diff = Math.abs(rs - s);
+        if (q_diff > r_diff && q_diff > s_diff) rq = -rr - rs;
+        else if (r_diff > s_diff) rr = -rq - rs;
+        return { q: rq, r: rr };
+    }
 
-        // 雙側認輸鍵
-        const onSurrender = () => {
-            if(confirm("確定要認輸嗎？")) {
-                const winner = Engine.surrender();
-                alert(`${winner === 1 ? '黑棋' : '白棋'} 獲勝！`);
-                Engine.init(); render();
-            }
-        };
-        document.getElementById('btn-surrender-top').onclick = onSurrender;
-        document.getElementById('btn-surrender-bottom').onclick = onSurrender;
-
-        // 畫布點擊
-        canvas.addEventListener('pointerdown', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const { q, r } = pixelToHex(e.clientX - rect.left, e.clientY - rect.top);
-            if(Engine.handleTap(q, r)) render();
-        });
-    };
+    function drawCircle(x, y, r, color) {
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = color; ctx.fill();
+    }
 
     function render() {
         const state = Engine.getState();
-        // 更新雙側按鈕狀態
-        const isReady = !!state.pendingMove;
-        document.getElementById('btn-execute-top').disabled = !isReady;
-        document.getElementById('btn-execute-bottom').disabled = !isReady;
-        document.getElementById('turn-display').innerText = state.turn === 1 ? "黑棋回合" : "白棋回合";
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // 繪製棋盤孔與棋子
+        state.board.forEach((piece, key) => {
+            const [q, r] = key.split(',').map(Number);
+            const { x, y } = hexToPixel(q, r);
+            
+            // 繪製棋位孔
+            drawCircle(x, y, HEX_SIZE * 0.8, "#ecf0f1");
 
-        // 繪圖邏輯 (略，使用 HEX_SIZE 與 CENTER 繪製)
-        // ... (包含原本的 drawCircle, drawRing 等輔助函數) ...
+            // 繪製棋子
+            if (piece !== 0) {
+                drawCircle(x, y, HEX_SIZE * 0.7, piece === 1 ? "#2c3e50" : "#f1f2f6");
+                // 選取特效
+                if (state.selection.some(s => s.q === q && s.r === r)) {
+                    ctx.strokeStyle = "#f1c40f"; ctx.lineWidth = 3;
+                    ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.75, 0, Math.PI*2); ctx.stroke();
+                }
+            }
+        });
+
+        // 更新 UI
+        document.getElementById('btn-execute-top').disabled = !state.pendingMove;
+        document.getElementById('btn-execute-bottom').disabled = !state.pendingMove;
+        document.getElementById('turn-display').innerText = state.turn === 1 ? "黑棋回合" : "白棋回合";
     }
 
-    // 座標轉換邏輯 (pixelToHex, hexToPixel)
-    // ...
+    // 事件監聽
+    document.getElementById('btn-exit').onclick = () => {
+        // 根據 folder.csv，從 games/abalone/v2.1.3/ 回到根目錄 index.html 需三層
+        if(confirm("確定退出回大廳？")) window.location.href = "../../../index.html";
+    };
+
+    document.getElementById('btn-reset').onclick = () => { Engine.init(); render(); };
+
+    const onExecute = () => { if(Engine.execute()) render(); };
+    document.getElementById('btn-execute-top').onclick = onExecute;
+    document.getElementById('btn-execute-bottom').onclick = onExecute;
+
+    canvas.addEventListener('pointerdown', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const { q, r } = pixelToHex(e.clientX - rect.left, e.clientY - rect.top);
+        if(Engine.handleTap(q, r)) render();
+    });
 
     Engine.init();
-    bindEvents();
 });
