@@ -1,4 +1,4 @@
-window.UI_VERSION = "v3.3.0";
+window.UI_VERSION = "v3.4.0";
 
 document.addEventListener("DOMContentLoaded", () => {
     const versionTag = document.getElementById('global-version-tag');
@@ -12,10 +12,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const btnReset = document.getElementById('btn-reset');
     const btnOkTop = document.getElementById('btn-execute-top');
     const btnOkBottom = document.getElementById('btn-execute-bottom');
-    const btnPrev = document.getElementById('btn-prev');
-    const btnNext = document.getElementById('btn-next');
-    const pathControls = document.getElementById('path-controls');
-    const pathIndicator = document.getElementById('path-indicator');
+    const pathCtrlsTop = document.getElementById('path-controls-top');
+    const pathCtrlsBottom = document.getElementById('path-controls-bottom');
+    const indTop = document.getElementById('path-indicator-top');
+    const indBottom = document.getElementById('path-indicator-bottom');
     const turnEl = document.getElementById('turn-display');
     
     let CENTER = { x: 0, y: 0 }, HEX_SIZE = 0, isTracing = false;
@@ -35,12 +35,13 @@ document.addEventListener("DOMContentLoaded", () => {
     window.addEventListener('resize', resize);
     setTimeout(resize, 100);
 
+    // 座標映射旋轉 90 度，配合螢幕長軸對坐
     function hexToPixel(q, r) {
-        return { x: CENTER.x + HEX_SIZE * 1.5 * q, y: CENTER.y + HEX_SIZE * Math.sqrt(3) * (r + q / 2) };
+        return { x: CENTER.x + HEX_SIZE * Math.sqrt(3) * (r + q / 2), y: CENTER.y + HEX_SIZE * 1.5 * q };
     }
 
     function pixelToHex(px, py) {
-        let x = (px - CENTER.x) / HEX_SIZE, y = (py - CENTER.y) / HEX_SIZE;
+        let y = (px - CENTER.x) / HEX_SIZE, x = (py - CENTER.y) / HEX_SIZE;
         let q = (2/3 * x), r = (-1/3 * x + Math.sqrt(3)/3 * y);
         let s = -q - r, rq = Math.round(q), rr = Math.round(r), rs = Math.round(s);
         if (Math.abs(rq-q) > Math.abs(rr-r) && Math.abs(rq-q) > Math.abs(rs-s)) rq = -rr-rs;
@@ -88,17 +89,16 @@ document.addEventListener("DOMContentLoaded", () => {
     function updateUI(state) {
         const hasPaths = state.legalPaths.length > 0;
         
-        // 控制路徑切換面板顯示與文字
-        if (pathControls) {
-            if (hasPaths && state.legalPaths.length > 1) {
-                pathControls.classList.add('active');
-                if (pathIndicator) pathIndicator.innerText = `${state.pathIndex + 1} / ${state.legalPaths.length}`;
-            } else {
-                pathControls.classList.remove('active');
-            }
-        }
+        // 更新雙端控制器顯隱
+        [pathCtrlsTop, pathCtrlsBottom].forEach(ctrl => {
+            if (ctrl) ctrl.style.display = hasPaths ? "flex" : "none";
+        });
+        
+        // 更新數值顯示（若僅一條路徑顯示 1/1）
+        const indText = `${state.pathIndex + 1} / ${Math.max(1, state.legalPaths.length)}`;
+        [indTop, indBottom].forEach(ind => { if (ind) ind.innerText = indText; });
 
-        // 獨立權限控制：黑棋(1)操作 Bottom，白棋(2)操作 Top
+        // 獨立權限控制
         const canExecute = state.pathIndex !== -1;
         if (btnOkBottom) {
             const isBlackTurn = state.turn === 1;
@@ -142,12 +142,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // 基礎功能綁定
-    if (btnExit) btnExit.onclick = () => { alert("遊戲已退出"); window.location.reload(); };
+    if (btnExit) btnExit.onclick = () => { window.location.href = "../../index.html"; };
     if (btnReset) btnReset.onclick = () => { Engine.init(); render(); };
     
-    // 路徑切換綁定
-    if (btnPrev) btnPrev.onclick = () => { Engine.cyclePath(-1); render(); };
-    if (btnNext) btnNext.onclick = () => { Engine.cyclePath(1); render(); };
+    // 雙端路徑切換綁定
+    const onPrev = () => { Engine.cyclePath(-1); render(); };
+    const onNext = () => { Engine.cyclePath(1); render(); };
+    document.getElementById('btn-prev-top')?.addEventListener('click', onPrev);
+    document.getElementById('btn-next-top')?.addEventListener('click', onNext);
+    document.getElementById('btn-prev-bottom')?.addEventListener('click', onPrev);
+    document.getElementById('btn-next-bottom')?.addEventListener('click', onNext);
     
     // 兩側執行按鈕綁定
     const executeMove = () => { if (Engine.execute()) render(); };
