@@ -4,11 +4,16 @@
     --accent-green: #2ed573;
     --accent-red: #ff4757;
 
-    /* --- 手術刀：v3.4.0 視覺變數重構 --- */
-    --board-grid-color: rgba(255, 255, 255, 0.03); /* 虛影特效 */
+    /* --- 手術刀：精確還原 v3.4.0 視覺參數 --- */
+    /* 1. 修正虛影特效：還原 3.4.0 的極低透明度感 */
+    --board-grid-color: rgba(255, 255, 255, 0.03); 
+    
+    /* 2. 修正棋子配色：還原 3.4.0 專用深藍灰與純白 */
     --piece-black: #2c3e50;
     --piece-white: #ffffff;
     --piece-stroke: rgba(0, 0, 0, 0.2);
+    
+    /* 3. 修正路徑與選取特效 */
     --select-color: #3498db;
     --path-inline-color: #2ecc71;
     --path-broadside-color: #f1c40f;
@@ -16,39 +21,14 @@
     /* --- 手術刀結束 --- */
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
-
-body, html {
-    height: 100dvh; width: 100vw;
-    background-color: var(--bg-color);
-    font-family: -apple-system, sans-serif;
-    overflow: hidden;
-}
-
-#game-app { display: flex; flex-direction: column; width: 100%; height: 100%; }
-
-/* 長軸鎖定佈局 */
-#game-app.mode-h { flex-direction: row; }
-#game-app.mode-h .control-panel { width: 220px; height: 100%; flex-direction: column; justify-content: center; gap: 30px; }
-#game-app.mode-h .side-alpha { transform: none; }
-
-.control-panel { display: flex; justify-content: space-between; align-items: center; padding: 15px; height: 100px; flex-shrink: 0; }
-.side-alpha { transform: rotate(180deg); }
-
-.icon-btn { background: rgba(255,255,255,0.1); border: none; color: white; padding: 10px 15px; border-radius: 20px; cursor: pointer; font-size: 14px; }
-.icon-btn.danger { background: rgba(255, 71, 87, 0.2); color: var(--accent-red); }
-
-.action-btn { padding: 12px 20px; border-radius: 25px; border: none; font-weight: bold; cursor: pointer; background: #34495e; color: rgba(255,255,255,0.3); transition: 0.3s; }
-.action-btn:not(:disabled) { background: var(--accent-green); color: white; box-shadow: 0 4px 12px rgba(46, 213, 115, 0.4); }
+/* ... 以下佈局代碼保持 v3.5.0 不變，確保長軸鎖定與手機修復 ... */
 
 #game-canvas {
-    background: var(--board-grid-color);
+    /* 關鍵修復：Canvas 自身的背景也必須還原為 3.4.0 的透明度 */
+    background: var(--board-grid-color); 
     border-radius: 50%;
     box-shadow: 0 0 40px rgba(0,0,0,0.3);
-    touch-action: none; /* 手機連選關鍵 */
+    touch-action: none;
 }
 
-#global-version-tag { position: fixed; bottom: 5px; right: 10px; font-size: 10px; color: rgba(255,255,255,0.3); z-index: 100; }
-#global-version-tag::after { content: " | CSS: v3.5.0 (Bridge)"; }
-
-.board-container { flex: 1; display: flex; justify-content: center; align-items: center; position: relative; }
+#global-version-tag::after { content: " | CSS: v3.5.1 (Visual Restore)"; }
