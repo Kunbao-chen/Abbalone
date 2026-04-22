@@ -21,6 +21,13 @@ body, html {
     height: 100%; 
 }
 
+/* --- 手術刀：長軸鎖定佈局 (v3.4.1) --- */
+#game-app.mode-h { flex-direction: row; }
+#game-app.mode-h .side-alpha { transform: none; width: 180px; height: 100%; flex-direction: column; }
+#game-app.mode-h .side-beta { width: 180px; height: 100%; flex-direction: column; }
+#game-app.mode-h .control-panel { justify-content: center; gap: 30px; }
+/* --- 手術刀結束 --- */
+
 .control-panel {
     display: flex;
     justify-content: space-between;
@@ -49,31 +56,21 @@ body, html {
 
 #turn-display { color: var(--text-main); font-weight: bold; font-size: 1rem; }
 
+/* --- 手術刀：版號顯示 --- */
+#global-version-tag { position: fixed; bottom: 5px; right: 10px; font-size: 10px; color: rgba(255,255,255,0.3); z-index: 100; }
+#global-version-tag::after { content: " | CSS: v3.4.1"; }
+/* --- 手術刀結束 --- */
+
 .board-container { 
     flex: 1; 
     display: flex; 
     justify-content: center; 
     align-items: center; 
     position: relative;
-    overflow: hidden;
 }
-#game-canvas { background: #ffffff; border-radius: 50%; box-shadow: 0 0 40px rgba(0,0,0,0.5); touch-action: none; }
 
-#global-version-tag { position: fixed; bottom: 5px; right: 8px; font-family: monospace; font-size: 10px; color: rgba(255,255,255,0.3); pointer-events: none; }
-
-/* 行內切換面板樣式 */
-.path-controls-inline {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    background: rgba(0, 0, 0, 0.4);
-    padding: 3px 10px;
-    border-radius: 20px;
-}
-.path-indicator {
-    color: white;
-    font-weight: bold;
-    font-size: 14px;
-    min-width: 35px;
-    text-align: center;
+#game-canvas {
+    background: rgba(255,255,255,0.03);
+    border-radius: 50%;
+    box-shadow: 0 0 40px rgba(0,0,0,0.3);
 }
