@@ -1,4 +1,4 @@
-window.ENGINE_VERSION = "v3.2.1";
+window.ENGINE_VERSION = "v3.2.2";
 
 const Engine = (function() {
     let board = new Map();
@@ -8,10 +8,7 @@ const Engine = (function() {
     let legalPaths = []; 
     let pathIndex = -1;
 
-    const DIRS = [
-        {q:1, r:0}, {q:1, r:-1}, {q:0, r:-1},
-        {q:-1, r:0}, {q:-1, r:1}, {q:0, r:1}
-    ];
+    const DIRS = [{q:1, r:0}, {q:1, r:-1}, {q:0, r:-1}, {q:-1, r:0}, {q:-1, r:1}, {q:0, r:1}];
 
     function init() {
         board.clear();
@@ -31,15 +28,12 @@ const Engine = (function() {
     }
 
     function resetInteraction() {
-        selection = [];
-        legalPaths = [];
-        pathIndex = -1;
+        selection = []; legalPaths = []; pathIndex = -1;
     }
 
     function traceSelection(q, r) {
         if (!board.has(`${q},${r}`) || board.get(`${q},${r}`) !== turn) return false;
-        const already = selection.some(s => s.q === q && s.r === r);
-        if (already) return false;
+        if (selection.some(s => s.q === q && s.r === r)) return false;
 
         if (selection.length === 0) {
             selection.push({q, r});
@@ -51,6 +45,7 @@ const Engine = (function() {
 
         if (selection.length >= 2) {
             const prev = selection[selection.length - 2];
+            // 轉彎判定
             if ((q - last.q !== last.q - prev.q) || (r - last.r !== last.r - prev.r)) {
                 selection = [{q: last.q, r: last.r}, {q, r}];
             } else {
@@ -70,6 +65,8 @@ const Engine = (function() {
             const path = validateMove(selection, dir);
             if (path) legalPaths.push(path);
         });
+        // 依據類型排序：火車(in-line)優先
+        legalPaths.sort((a, b) => a.type === 'in-line' ? -1 : 1);
         pathIndex = legalPaths.length > 0 ? 0 : -1;
     }
 
@@ -85,13 +82,13 @@ const Engine = (function() {
             const head = getHead(sel, dir);
             const targetQ = head.q + dir.q, targetR = head.r + dir.r;
             if (!board.has(`${targetQ},${targetR}`)) return null;
-            const targetVal = board.get(`${targetQ},${targetR}`);
-            if (targetVal === 0) return { type: 'in-line', dir, sel };
-            if (targetVal === turn) return null;
-            let oppCount = 1, nQ = targetQ + dir.q, nR = targetR + dir.r;
-            while (board.get(`${nQ},${nR}`) === (3 - turn)) { oppCount++; nQ += dir.q; nR += dir.r; }
-            if (sel.length > oppCount && (board.get(`${nQ},${nR}`) === 0 || !board.has(`${nQ},${nR}`))) {
-                return { type: 'in-line', dir, sel, push: oppCount };
+            const tVal = board.get(`${targetQ},${targetR}`);
+            if (tVal === 0) return { type: 'in-line', dir, sel };
+            if (tVal === turn) return null;
+            let oppC = 1, nQ = targetQ + dir.q, nR = targetR + dir.r;
+            while (board.get(`${nQ},${nR}`) === (3 - turn)) { oppC++; nQ += dir.q; nR += dir.r; }
+            if (sel.length > oppC && (board.get(`${nQ},${nR}`) === 0 || !board.has(`${nQ},${nR}`))) {
+                return { type: 'in-line', dir, sel, push: oppC };
             }
         } else {
             if (sel.every(s => board.get(`${s.q + dir.q},${s.r + dir.r}`) === 0)) return { type: 'broadside', dir, sel };
@@ -100,13 +97,11 @@ const Engine = (function() {
     }
 
     function getHead(sel, dir) {
-        return sel.reduce((prev, curr) => {
-            return ((curr.q - prev.q) * dir.q + (curr.r - prev.r) * dir.r) > 0 ? curr : prev;
-        });
+        return sel.reduce((p, c) => ((c.q - p.q) * dir.q + (c.r - p.r) * dir.r) > 0 ? c : p);
     }
 
     return { 
-        init, traceSelection, finalizeSelection, 
+        init, traceSelection, finalizeSelection, resetInteraction,
         cyclePath: (delta) => { if(legalPaths.length) pathIndex = (pathIndex + delta + legalPaths.length) % legalPaths.length; },
         execute: () => {
             if (pathIndex === -1) return false;
