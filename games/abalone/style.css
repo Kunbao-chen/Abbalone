@@ -30,6 +30,11 @@ body, html {
     flex-shrink: 0;
 }
 
+/* 達成對坐視角翻轉 */
+.side-alpha {
+    transform: rotate(180deg);
+}
+
 .action-group { display: flex; gap: 10px; align-items: center; }
 .meta-group { display: flex; gap: 8px; }
 
@@ -56,31 +61,19 @@ body, html {
 
 #global-version-tag { position: fixed; bottom: 5px; right: 8px; font-family: monospace; font-size: 10px; color: rgba(255,255,255,0.3); pointer-events: none; }
 
-/* 新增：懸浮切換面板樣式 */
-.path-controls {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
+/* 行內切換面板樣式 */
+.path-controls-inline {
     display: flex;
     align-items: center;
-    gap: 15px;
-    background: rgba(0, 0, 0, 0.7);
-    padding: 10px 20px;
-    border-radius: 30px;
-    z-index: 10;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
+    gap: 5px;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 3px 10px;
+    border-radius: 20px;
 }
-.path-controls.active {
-    opacity: 1;
-    pointer-events: auto;
-}
-#path-indicator {
+.path-indicator {
     color: white;
     font-weight: bold;
     font-size: 14px;
-    min-width: 40px;
+    min-width: 35px;
     text-align: center;
 }
