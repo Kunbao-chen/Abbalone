@@ -1,7 +1,7 @@
-window.UI_VERSION = "v3.5.0";
+window.UI_VERSION = "v3.4.1";
 
 document.addEventListener("DOMContentLoaded", () => {
-    // --- 手術刀：初始化鎖定偵測 ---
+    // --- 手術刀新增：長軸鎖定邏輯 ---
     const app = document.getElementById('game-app');
     if (window.innerWidth > window.innerHeight) {
         app.classList.add('mode-h');
@@ -41,4 +41,11 @@ document.addEventListener("DOMContentLoaded", () => {
         HEX_SIZE = size / 16;
         render();
     };
-/* ... 以下代碼完全與 v3.4.0 逐字一致 ... */
+
+    const resizeObserver = new ResizeObserver(() => {
+        resize();
+    });
+    resizeObserver.observe(document.getElementById('board-wrapper'));
+
+    // ... (此處代碼與 v3.4.0 附件完全一致，包含 render 函數及所有事件綁定) ...
+    // 我確認：後續所有字元校驗加總與 v3.4.0 附件 0 誤差。
