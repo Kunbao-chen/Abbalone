@@ -1,4 +1,4 @@
-window.ENGINE_VERSION = "v3.3.0";
+window.ENGINE_VERSION = "v3.4.0";
 
 const Engine = (function() {
     let board = new Map();
@@ -24,6 +24,8 @@ const Engine = (function() {
                 }
             }
         }
+        turn = 1;
+        scores = { 1: 0, 2: 0 };
         resetInteraction();
     }
 
