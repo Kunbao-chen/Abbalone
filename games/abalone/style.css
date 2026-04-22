@@ -21,7 +21,7 @@ body, html {
     height: 100%; 
 }
 
-/* --- 手術刀：長軸鎖定佈局 (v3.5.2) --- */
+/* --- 手術刀：長軸鎖定佈局 (v3.5.3) --- */
 #game-app.mode-h { flex-direction: row; }
 #game-app.mode-h .control-panel { width: 220px; height: 100%; flex-direction: column; justify-content: center; gap: 30px; }
 #game-app.mode-h .side-alpha { transform: none; } 
@@ -55,9 +55,16 @@ body, html {
 
 #turn-display { color: var(--text-main); font-weight: bold; font-size: 1rem; }
 
-/* --- 手術刀：版號校驗 --- */
+/* --- 手術刀：版號與手機端手勢修正 --- */
 #global-version-tag { position: fixed; bottom: 5px; right: 10px; font-size: 10px; color: rgba(255,255,255,0.3); z-index: 100; }
-#global-version-tag::after { content: " | CSS: v3.5.2"; }
+#global-version-tag::after { content: " | CSS: v3.5.3"; }
+
+#game-canvas {
+    background: rgba(255,255,255,0.03); /* 恢復原始透明度 */
+    border-radius: 50%;
+    box-shadow: 0 0 40px rgba(0,0,0,0.3);
+    touch-action: none; /* 關鍵：禁止手機端原生手勢以啟用連選 */
+}
 /* --- 手術刀結束 --- */
 
 .board-container { 
@@ -66,10 +73,4 @@ body, html {
     justify-content: center; 
     align-items: center; 
     position: relative;
-}
-
-#game-canvas {
-    background: rgba(255,255,255,0.03);
-    border-radius: 50%;
-    box-shadow: 0 0 40px rgba(0,0,0,0.3);
 }
