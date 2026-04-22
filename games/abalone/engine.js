@@ -1,4 +1,4 @@
-window.ENGINE_VERSION = "v3.2.2";
+window.ENGINE_VERSION = "v3.3.0";
 
 const Engine = (function() {
     let board = new Map();
