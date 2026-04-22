@@ -1,7 +1,7 @@
-window.UI_VERSION = "v3.4.1";
+window.UI_VERSION = "v3.5.0";
 
 document.addEventListener("DOMContentLoaded", () => {
-    // --- 手術刀：初始化鎖定偵測 (v3.4.1) ---
+    // --- 手術刀：初始化鎖定偵測 ---
     const app = document.getElementById('game-app');
     if (window.innerWidth > window.innerHeight) {
         app.classList.add('mode-h');
@@ -41,5 +41,4 @@ document.addEventListener("DOMContentLoaded", () => {
         HEX_SIZE = size / 16;
         render();
     };
-
-    // ... (其餘 resizeObserver 綁定與遊戲邏輯皆與 v3.4.0 逐字相同，以維護 Checksum) ...
+/* ... 以下代碼完全與 v3.4.0 逐字一致 ... */
