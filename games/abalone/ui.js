@@ -1,7 +1,7 @@
-window.UI_VERSION = "v3.4.1";
+window.UI_VERSION = "v3.5.2";
 
 document.addEventListener("DOMContentLoaded", () => {
-    // --- 手術刀新增：長軸鎖定邏輯 ---
+    // --- 手術刀：長軸鎖定邏輯 ---
     const app = document.getElementById('game-app');
     if (window.innerWidth > window.innerHeight) {
         app.classList.add('mode-h');
@@ -32,29 +32,54 @@ document.addEventListener("DOMContentLoaded", () => {
         const size = Math.min(wrapper.clientWidth, wrapper.clientHeight) - 60;
         canvas.width = size * window.devicePixelRatio;
         canvas.height = size * window.devicePixelRatio;
-        canvas.style.width = `${size}px`; canvas.style.height = `${size}px`;
+        canvas.style.width = `${size}px`; 
+        canvas.style.height = `${size}px`;
+        
         ctx.resetTransform();
         ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
         CENTER = { x: size / 2, y: size / 2 };
-        HEX_SIZE = size / 15.5;
+        HEX_SIZE = size / 16;
         render();
     };
-    window.addEventListener('resize', resize);
-    setTimeout(resize, 100);
 
-    // 座標映射旋轉 90 度，配合螢幕長軸對坐
+    const resizeObserver = new ResizeObserver(() => {
+        resize();
+    });
+    resizeObserver.observe(document.getElementById('board-wrapper'));
+
+    // --- 手術刀：平頭六角座標轉換 (長軸對坐核心) ---
     function hexToPixel(q, r) {
-        return { x: CENTER.x + HEX_SIZE * Math.sqrt(3) * (r + q / 2), y: CENTER.y + HEX_SIZE * 1.5 * q };
+        if (app.classList.contains('mode-h')) {
+            // 橫向模式：將棋盤轉 90 度，變為平頭朝向玩家 (Flat-topped)
+            return {
+                x: CENTER.x + HEX_SIZE * 1.5 * q,
+                y: CENTER.y + HEX_SIZE * Math.sqrt(3) * (r + q / 2)
+            };
+        }
+        // 縱向模式：維持原始尖頭 (Pointy-topped)
+        return { 
+            x: CENTER.x + HEX_SIZE * Math.sqrt(3) * (r + q / 2), 
+            y: CENTER.y + HEX_SIZE * 1.5 * q 
+        };
     }
 
     function pixelToHex(px, py) {
-        let y = (px - CENTER.x) / HEX_SIZE, x = (py - CENTER.y) / HEX_SIZE;
-        let q = (2/3 * x), r = (-1/3 * x + Math.sqrt(3)/3 * y);
+        let q, r;
+        if (app.classList.contains('mode-h')) {
+            let x = (px - CENTER.x) / HEX_SIZE, y = (py - CENTER.y) / HEX_SIZE;
+            q = (2/3 * x);
+            r = (-1/3 * x + Math.sqrt(3)/3 * y);
+        } else {
+            let y = (px - CENTER.x) / HEX_SIZE, x = (py - CENTER.y) / HEX_SIZE;
+            q = (2/3 * x);
+            r = (-1/3 * x + Math.sqrt(3)/3 * y);
+        }
         let s = -q - r, rq = Math.round(q), rr = Math.round(r), rs = Math.round(s);
         if (Math.abs(rq-q) > Math.abs(rr-r) && Math.abs(rq-q) > Math.abs(rs-s)) rq = -rr-rs;
         else if (Math.abs(rr-r) > Math.abs(rs-s)) rr = -rq-rs;
         return { q: rq, r: rr };
     }
+    // --- 手術刀結束 ---
 
     function render() {
         const state = Engine.getState();
@@ -64,7 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const [q, r] = key.split(',').map(Number);
             const { x, y } = hexToPixel(q, r);
             ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.8, 0, Math.PI * 2);
-            ctx.fillStyle = "#ecf0f1"; ctx.fill();
+            ctx.fillStyle = "rgba(255,255,255,0.05)"; ctx.fill();
             if (piece !== 0) {
                 ctx.beginPath(); ctx.arc(x, y, HEX_SIZE * 0.7, 0, Math.PI * 2);
                 ctx.fillStyle = piece === 1 ? "#2c3e50" : "#ffffff"; ctx.fill();
@@ -95,29 +120,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function updateUI(state) {
         const hasPaths = state.legalPaths.length > 0;
-        
-        // 更新雙端控制器顯隱
         [pathCtrlsTop, pathCtrlsBottom].forEach(ctrl => {
             if (ctrl) ctrl.style.display = hasPaths ? "flex" : "none";
         });
-        
-        // 更新數值顯示（若僅一條路徑顯示 1/1）
         const indText = `${state.pathIndex + 1} / ${Math.max(1, state.legalPaths.length)}`;
         [indTop, indBottom].forEach(ind => { if (ind) ind.innerText = indText; });
 
-        // 獨立權限控制
         const canExecute = state.pathIndex !== -1;
-        if (btnOkBottom) {
-            const isBlackTurn = state.turn === 1;
-            btnOkBottom.disabled = !(isBlackTurn && canExecute);
-            btnOkBottom.style.opacity = isBlackTurn ? "1" : "0.3";
-        }
-        if (btnOkTop) {
-            const isWhiteTurn = state.turn === 2;
-            btnOkTop.disabled = !(isWhiteTurn && canExecute);
-            btnOkTop.style.opacity = isWhiteTurn ? "1" : "0.3";
-        }
-
+        if (btnOkBottom) btnOkBottom.disabled = !(state.turn === 1 && canExecute);
+        if (btnOkTop) btnOkTop.disabled = !(state.turn === 2 && canExecute);
         if (turnEl) turnEl.innerText = state.turn === 1 ? "黑棋回合" : "白棋回合";
     }
 
@@ -125,11 +136,8 @@ document.addEventListener("DOMContentLoaded", () => {
         isTracing = true;
         const rect = canvas.getBoundingClientRect();
         const p = pixelToHex(e.clientX - rect.left, e.clientY - rect.top);
-        
         const state = Engine.getState();
-        if (state.board.get(`${p.q},${p.r}`) === state.turn) {
-            Engine.resetInteraction();
-        }
+        if (state.board.get(`${p.q},${p.r}`) === state.turn) Engine.resetInteraction();
         if (Engine.traceSelection(p.q, p.r)) render();
     });
 
@@ -148,11 +156,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // 基礎功能綁定
     if (btnExit) btnExit.onclick = () => { window.location.href = "../../index.html"; };
     if (btnReset) btnReset.onclick = () => { Engine.init(); render(); };
     
-    // 雙端路徑切換綁定
     const onPrev = () => { Engine.cyclePath(-1); render(); };
     const onNext = () => { Engine.cyclePath(1); render(); };
     document.getElementById('btn-prev-top')?.addEventListener('click', onPrev);
@@ -160,7 +166,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById('btn-prev-bottom')?.addEventListener('click', onPrev);
     document.getElementById('btn-next-bottom')?.addEventListener('click', onNext);
     
-    // 兩側執行按鈕綁定
     const executeMove = () => { if (Engine.execute()) render(); };
     if (btnOkTop) btnOkTop.onclick = executeMove;
     if (btnOkBottom) btnOkBottom.onclick = executeMove;
