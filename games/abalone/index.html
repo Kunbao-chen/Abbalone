@@ -3,26 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Abalone Pro PVP - v3.4.0</title>
+    <title>Abalone Pro PVP - v3.5.0</title>
     <link rel="stylesheet" href="style.css">
-    <script>window.HTML_VERSION = "v3.4.0";</script>
+    <script>window.HTML_VERSION = "v3.5.0";</script>
 </head>
 <body>
-    <div id="game-app">
+    <div id="game-app" class="orientation-adaptive">
         <header class="control-panel side-alpha">
-            <div class="meta-group">
-                <button id="btn-exit" class="icon-btn">✕ 退出</button>
-                <button id="btn-reset" class="icon-btn">↻ 重置</button>
+            <div class="meta-actions">
+                <button id="btn-exit" class="icon-btn">✕</button>
+                <button id="btn-reset" class="icon-btn">↻</button>
             </div>
-            <div class="action-group">
-                <div class="path-controls-inline" id="path-controls-top" style="display: none;">
-                    <button id="btn-prev-top" class="icon-btn action-btn">◀</button>
-                    <span id="path-indicator-top" class="path-indicator">1 / 1</span>
-                    <button id="btn-next-top" class="icon-btn action-btn">▶</button>
+            <div class="action-zone">
+                <div id="ctrl-alpha" class="turn-controls" style="display: none;">
+                    <div class="path-nav">
+                        <button id="btn-prev-alpha" class="nav-btn">◀</button>
+                        <span id="ind-alpha" class="path-indicator">1/1</span>
+                        <button id="btn-next-alpha" class="nav-btn">▶</button>
+                    </div>
+                    <button id="btn-ok-alpha" class="execute-btn">確認走棋</button>
                 </div>
-                <button id="btn-execute-top" class="action-btn" disabled>確認走棋</button>
-                <button id="btn-surrender-top" class="icon-btn danger">認輸</button>
             </div>
+            <div class="score-board blue-zone" id="score-alpha">白棋: 0</div>
         </header>
 
         <main class="board-container" id="board-wrapper">
@@ -30,21 +32,21 @@
         </main>
 
         <footer class="control-panel side-beta">
-            <div class="action-group">
-                <div class="path-controls-inline" id="path-controls-bottom" style="display: none;">
-                    <button id="btn-prev-bottom" class="icon-btn action-btn">◀</button>
-                    <span id="path-indicator-bottom" class="path-indicator">1 / 1</span>
-                    <button id="btn-next-bottom" class="icon-btn action-btn">▶</button>
+            <div class="score-board blue-zone" id="score-beta">黑棋: 0</div>
+            <div class="action-zone">
+                <div id="ctrl-beta" class="turn-controls" style="display: none;">
+                    <div class="path-nav">
+                        <button id="btn-prev-beta" class="nav-btn">◀</button>
+                        <span id="ind-beta" class="path-indicator">1/1</span>
+                        <button id="btn-next-beta" class="nav-btn">▶</button>
+                    </div>
+                    <button id="btn-ok-beta" class="execute-btn">確認走棋</button>
                 </div>
-                <button id="btn-execute-bottom" class="action-btn" disabled>確認走棋</button>
-                <button id="btn-surrender-bottom" class="icon-btn danger">認輸</button>
             </div>
-            <div id="turn-display">黑棋回合</div>
+            <div id="turn-status">黑棋回合</div>
         </footer>
     </div>
-
     <div id="global-version-tag">Loading...</div>
-
     <script src="engine.js"></script>
     <script src="ui.js"></script>
 </body>
