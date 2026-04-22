@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Abalone Pro PVP - v3.1.3</title>
+    <title>Abalone Pro PVP - v3.3.0</title>
     <link rel="stylesheet" href="style.css">
-    <script>window.HTML_VERSION = "v3.1.3";</script>
+    <script>window.HTML_VERSION = "v3.3.0";</script>
 </head>
 <body>
     <div id="game-app">
@@ -22,6 +22,12 @@
 
         <main class="board-container" id="board-wrapper">
             <canvas id="game-canvas"></canvas>
+            
+            <div id="path-controls" class="path-controls">
+                <button id="btn-prev" class="icon-btn action-btn">◀</button>
+                <span id="path-indicator">1 / 1</span>
+                <button id="btn-next" class="icon-btn action-btn">▶</button>
+            </div>
         </main>
 
         <footer class="control-panel side-beta">
